@@ -1,0 +1,4 @@
+Measuring in solidworks gives 3.654mm top to bottom on the side vent.
+measuring the same on the bike gives me 397mm - but I'm pretty suspicious of how close these are.
+
+For now, the 360 project file has a scale of 108.64 x
