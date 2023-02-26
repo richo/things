@@ -1,0 +1,8 @@
+[package]
+name = "switchblock"
+version = "0.1.0"
+authors = ["Richo Butts <richo@psych0tik.net"]
+edition = '2018'
+
+[dependencies]
+ruduino = "0.2"
