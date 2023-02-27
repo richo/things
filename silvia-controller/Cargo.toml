@@ -6,7 +6,12 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [[bin]]
-name = "silvia-controller"
+name = "prod"
+test = false
+bench = false
+
+[[bin]]
+name = "screen-test"
 test = false
 bench = false
 
