@@ -6,11 +6,45 @@ use arduino_hal::prelude::*;
 use arduino_hal::hal::port::{Pin, PB2, PB3, PC4, PC5};
 use arduino_hal::hal::port::mode::{Input, Output, PullUp};
 
+use hd44780_driver;
+
+
 type PUMP = Pin<Output, PB2>;
 type VALVE = Pin<Output, PB3>;
 
 #[arduino_hal::entry]
 fn main() -> ! {
+    let dp = arduino_hal::Peripherals::take().unwrap();
+    let pins = arduino_hal::pins!(dp);
+
+    let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
+
+    let rs = pins.d12.into_output();
+    let rw = pins.d10.into_output();
+    let e = pins.d11.into_output();
+
+    let d4 = pins.d6.into_output();
+    let d5 = pins.d5.into_output();
+    let d6 = pins.d4.into_output();
+    let d7 = pins.d3.into_output();
+
+    let mut delay = arduino_hal::Delay::new();
+
+    let mut lcd = hd44780_driver::HD44780::new_4bit(
+        rs, e,
+        d4, d5, d6, d7,
+        &mut delay,
+    ).unwrap();
+
+    lcd.reset(&mut delay);
+    lcd.clear(&mut delay);
+    lcd.write_str("Hello, world!", &mut delay);
+
+
+    loop {}
+}
+
+fn old_main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
 
