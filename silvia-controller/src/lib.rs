@@ -32,6 +32,10 @@ pub trait Brew {
         let _ = ufmt::uwriteln!(silvia.serial, "{} {}",  Self::LOGLINE, msg);
     }
 
+    /// The main function which interacts with the machine to brew.
+    ///
+    /// You can safely return without turning off pumps and valves, etc, the frameowrk will take
+    /// care of resetting things for you.
     fn brew(silvia: &mut Silvia) -> Conclusion;
 }
 
@@ -161,26 +165,9 @@ impl Silvia {
         millis::millis()
     }
 
-    /// Confirm the solenoid is closed, then run the brew pump for some configurable number of millies,
-    /// then turn off the pump and the solenoid
-
     #[inline(always)]
     pub fn delay_ms(&self, time: u16) {
         arduino_hal::delay_ms(time)
-    }
-
-    pub fn run_infuse(&mut self) -> Conclusion {
-        // Infuse the puck by closing the solenoid and running the pump, but do not open the valve when
-        // finished.
-        self.valve.set_high();
-        self.pump.set_high();
-        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), |_| {}) {
-            self.pump.set_low();
-            self.valve.set_low();
-            return Conclusion::Interrupted(i);
-        }
-        self.pump.set_low();
-        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), |_| {})
     }
 }
 
@@ -189,10 +176,6 @@ pub fn spin_wait() {
     arduino_hal::delay_ms(100);
 }
 
-/// Turn on the pump and solenoid, wait some configurable number of millis, turn off the pump, wait
-/// some configurable number of millis, without opening the 3 way valve.
-const INFUSE_MILLIS: u16 = 2000;
-const INFUSE_WAIT_MILLIS: u16 = 2500;
 
 // TODO(richo) impl the traits that let me ? this
 pub enum Conclusion {

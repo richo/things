@@ -6,8 +6,6 @@ use silvia_controller::*;
 type ActiveBrew = brews::RichoBrew;
 
 fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
-        // silvia.led().toggle();
-        // TODO(richo) Migrate to doing an interrupt thing here instead of shitty histerisis
         if silvia.brew_switch() {
             silvia.log("brew switch");
             // Wait for the switch to come up
