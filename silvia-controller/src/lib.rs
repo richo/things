@@ -164,6 +164,7 @@ impl Devices {
     }
 
     pub fn run_backflush(&mut self) -> Conclusion {
+
         for _ in 0..BACKFLUSH_REPEATS {
             self.valve.set_high();
             self.pump.set_high();
