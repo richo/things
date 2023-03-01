@@ -69,21 +69,3 @@ pub fn millis() -> u32 {
 
 // ----------------------------------------------------------------------------
 
-fn _main() -> ! {
-    let dp = arduino_hal::Peripherals::take().unwrap();
-    let pins = arduino_hal::pins!(dp);
-    let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
-
-    millis_init(dp.TC0);
-
-    // Enable interrupts globally
-    unsafe { avr_device::interrupt::enable() };
-
-    // Wait for a character and print current time once it is received
-    loop {
-        let b = nb::block!(serial.read()).void_unwrap();
-
-        let time = millis();
-        ufmt::uwriteln!(&mut serial, "Got {} after {} ms!\r", b, time).void_unwrap();
-    }
-}

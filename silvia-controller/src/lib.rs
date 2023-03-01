@@ -40,7 +40,10 @@ pub struct Devices {
 impl Devices {
     pub fn new() -> Self {
         let dp = arduino_hal::Peripherals::take().unwrap();
+
         millis::millis_init(dp.TC0);
+        unsafe { avr_device::interrupt::enable() };
+
         let pins = arduino_hal::pins!(dp);
         let serial = arduino_hal::default_serial!(dp, pins, 57600);
 
@@ -138,6 +141,18 @@ impl Devices {
 
     pub fn millis(&mut self) -> u32 {
         millis::millis()
+    }
+
+    pub fn run_infuse_and_brew(&mut self) -> Conclusion {
+        self.valve.set_high();
+        self.pump.set_high();
+        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), None) {
+            self.pump.set_low();
+            self.valve.set_low();
+            return Conclusion::Interrupted(i);
+        }
+        self.pump.set_low();
+        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), None)
     }
 
     /// Confirm the solenoid is closed, then run the brew pump for some configurable number of millies,
