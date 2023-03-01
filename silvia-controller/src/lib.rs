@@ -15,16 +15,30 @@ use hd44780_driver::{
 };
 
 pub mod millis;
+pub mod brews;
 
+pub trait Brew {
+    const LOGLINE: &'static str;
+    fn run(silvia: &mut Silvia) -> Conclusion {
+        Self::log(silvia, "starting brew");
+        let res = Self::brew(silvia);
+        // Confirm all the relays are closed.
+        silvia.valve_off();
+        silvia.brew_off();
+        res
+    }
 
-// type PUMP = Pin<Output, PB2>;
-// type VALVE = Pin<Output, PB3>;
+    fn log(silvia: &mut Silvia, msg: &'static str) {
+        let _ = ufmt::uwriteln!(silvia.serial, "{} {}",  Self::LOGLINE, msg);
+    }
 
+    fn brew(silvia: &mut Silvia) -> Conclusion;
+}
 
 type Display = HD44780<FourBitBus<Pin<Output, PB4>, Pin<Output, PB3>, Pin<Output, PD6>, Pin<Output, PD5>, Pin<Output, PD4>, Pin<Output, PD3>>>;
 type Serial = arduino_hal::usart::Usart<USART0, Pin<Input, PD0>, Pin<Output, PD1>>;
 
-pub struct Devices {
+pub struct Silvia {
     serial: Serial,
     lcd: Display,
     delay: arduino_hal::Delay,
@@ -37,7 +51,7 @@ pub struct Devices {
     led: Pin<Output, PB5>,
 }
 
-impl Devices {
+impl Silvia {
     pub fn new() -> Self {
         let dp = arduino_hal::Peripherals::take().unwrap();
 
@@ -74,7 +88,7 @@ impl Devices {
         let pump = pins.d9.into_output();
         let valve = pins.d8.into_output();
 
-        let mut res = Devices {
+        let mut res = Silvia {
             serial,
             lcd,
             delay,
@@ -174,15 +188,6 @@ impl Devices {
 
     /// Confirm the solenoid is closed, then run the brew pump for some configurable number of millies,
     /// then turn off the pump and the solenoid
-    pub fn run_brew(&mut self) -> Conclusion {
-        // Infuse leaves the valve closed, but we'll double check
-        self.valve.set_high();
-        self.pump.set_high();
-
-        // We'll run the pump for 35s or until someone stops us
-        // TODO(richo) Again holy shit this should be an interrupt thing
-        until_unless(3500, || self.brew.is_low(), |_| {})
-    }
 
     #[inline(always)]
     pub fn delay_ms(&self, time: u16) {

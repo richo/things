@@ -3,7 +3,7 @@
 
 use silvia_controller::*;
 
-fn mainloop(silvia: &mut Devices) -> Option<Conclusion> {
+fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
         // silvia.led().toggle();
         // TODO(richo) Migrate to doing an interrupt thing here instead of shitty histerisis
         if silvia.brew_switch() {
@@ -48,7 +48,7 @@ fn mainloop(silvia: &mut Devices) -> Option<Conclusion> {
 
 #[arduino_hal::entry]
 fn main() -> ! {
-    let mut silvia = Devices::new();
+    let mut silvia = Silvia::new();
 
     loop {
         silvia.reinit();

@@ -4,7 +4,7 @@ use silvia_controller::*;
 
 #[arduino_hal::entry]
 fn main() -> ! {
-    let mut devices = Devices::new();
+    let mut devices = Silvia::new();
 
     loop {
         devices.brew_on();
