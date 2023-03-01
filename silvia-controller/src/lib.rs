@@ -146,13 +146,13 @@ impl Devices {
     pub fn run_infuse_and_brew(&mut self) -> Conclusion {
         self.valve.set_high();
         self.pump.set_high();
-        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), None) {
+        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), |_| {}) {
             self.pump.set_low();
             self.valve.set_low();
             return Conclusion::Interrupted(i);
         }
         self.pump.set_low();
-        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), None)
+        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), |_| {})
     }
 
     /// Confirm the solenoid is closed, then run the brew pump for some configurable number of millies,
@@ -164,7 +164,7 @@ impl Devices {
 
         // We'll run the pump for 35s or until someone stops us
         // TODO(richo) Again holy shit this should be an interrupt thing
-        until_unless(3500, || self.brew.is_low(), None)
+        until_unless(3500, || self.brew.is_low(), |_| {})
     }
 
     #[inline(always)]
@@ -177,25 +177,28 @@ impl Devices {
         // finished.
         self.valve.set_high();
         self.pump.set_high();
-        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), None) {
+        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), |_| {}) {
             self.pump.set_low();
             self.valve.set_low();
             return Conclusion::Interrupted(i);
         }
         self.pump.set_low();
-        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), None)
+        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), |_| {})
     }
 
     pub fn run_backflush(&mut self) -> Conclusion {
 
+
         for _ in 0..BACKFLUSH_REPEATS {
             self.valve.set_high();
             self.pump.set_high();
-            let res = until_unless(BACKFLUSH_ON_MILLIS, || self.backflush.is_low(), None);
+            let flush = |time| { let _ = ufmt::uwriteln!(self.serial, "flush {}",  time); };
+            let res = until_unless(BACKFLUSH_ON_MILLIS, || self.backflush.is_low(), flush);
             self.pump.set_low();
             self.valve.set_low();
+            let wait = |time| { let _ = ufmt::uwriteln!(self.serial, "wait {}",  time); };
             if let Conclusion::Finished = res {
-                until_unless(BACKFLUSH_PAUSE_MILLIS, || self.backflush.is_low(), None);
+                until_unless(BACKFLUSH_PAUSE_MILLIS, || self.backflush.is_low(), wait);
             } else {
                 return res
             }
@@ -217,12 +220,13 @@ const INFUSE_WAIT_MILLIS: u16 = 2500;
 pub enum Conclusion {
     Finished,
     /// Contains the number of millis into the operation it was interrupted
-    Interrupted(u16),
+    Interrupted(u32),
 }
 
-const RESOLUTION: u16 = 20;
-fn until_unless<F>(millis: u16, unless: F, progress: Option<fn(u32)>) -> Conclusion
-where F: Fn() -> bool {
+const RESOLUTION: u16 = 100;
+fn until_unless<F, P>(millis: u16, unless: F, mut progress: P) -> Conclusion
+where F: Fn() -> bool,
+      P: FnMut(u32) {
     let start = millis::millis();
     let mut target = start + millis as u32;
     while millis::millis() < target {
@@ -231,8 +235,9 @@ where F: Fn() -> bool {
             while unless() {
                 arduino_hal::delay_ms(RESOLUTION);
             }
-            return Conclusion::Interrupted((millis::millis() - start) as u16);
+            return Conclusion::Interrupted(millis::millis() - start);
         }
+        progress(millis::millis() - start);
         arduino_hal::delay_ms(RESOLUTION);
     }
     Conclusion::Finished
