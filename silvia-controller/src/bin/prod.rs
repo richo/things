@@ -3,6 +3,8 @@
 
 use silvia_controller::*;
 
+type ActiveBrew = brews::RichoBrew;
+
 fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
         // silvia.led().toggle();
         // TODO(richo) Migrate to doing an interrupt thing here instead of shitty histerisis
@@ -14,7 +16,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             }
             silvia.log("-> brew");
 
-            let res = silvia.run_infuse_and_brew();
+            let res = silvia.brew::<ActiveBrew>();
             match res {
                 Conclusion::Finished => {
                     silvia.log("brew finished");
@@ -31,7 +33,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
                 spin_wait();
             }
             silvia.log("-> backflush");
-            let res = silvia.run_backflush();
+            let res = silvia.brew::<brews::BackFlush>();
             match res {
                 Conclusion::Finished => {
                     silvia.log("backflush finished");

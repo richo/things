@@ -115,6 +115,10 @@ impl Silvia {
         let _ = ufmt::uwriteln!(self.serial, "{}",  msg);
     }
 
+    pub fn brew<B: Brew>(&mut self) -> Conclusion {
+        B::brew(self)
+    }
+
     pub fn brew_on(&mut self) {
         self.pump.set_high()
     }
@@ -157,35 +161,6 @@ impl Silvia {
         millis::millis()
     }
 
-    pub fn run_infuse_and_brew(&mut self) -> Conclusion {
-        // Enable valve
-        self.valve.set_high();
-        // Pulse pump on and off for 300/200 3 times
-        for t in [200, 300, 400] {
-            self.pump.set_high();
-            let infuse = |time| { let _ = ufmt::uwriteln!(self.serial, "infuse {}",  time); };
-            if let Conclusion::Interrupted(i) = until_unless(t, || self.brew.is_low(), infuse) {
-                self.pump.set_low();
-                return Conclusion::Interrupted(i);
-            }
-            self.pump.set_low();
-            let wait = |time| { let _ = ufmt::uwriteln!(self.serial, "inwait {}",  time); };
-            if let Conclusion::Interrupted(i) = until_unless(200, || self.brew.is_low(), wait) {
-                self.pump.set_low();
-                return Conclusion::Interrupted(i);
-            }
-        }
-
-        // Run the main brew
-        // Infuse leaves the valve closed, but we'll double check
-        self.valve.set_high();
-        self.pump.set_high();
-
-        // We'll run the pump for 35s or until someone stops us
-        let brew = |time| { let _ = ufmt::uwriteln!(self.serial, "brew {}",  time); };
-        until_unless(35000, || self.brew.is_low(), brew)
-    }
-
     /// Confirm the solenoid is closed, then run the brew pump for some configurable number of millies,
     /// then turn off the pump and the solenoid
 
@@ -206,26 +181,6 @@ impl Silvia {
         }
         self.pump.set_low();
         until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), |_| {})
-    }
-
-    pub fn run_backflush(&mut self) -> Conclusion {
-
-
-        for _ in 0..BACKFLUSH_REPEATS {
-            self.valve.set_high();
-            self.pump.set_high();
-            let flush = |time| { let _ = ufmt::uwriteln!(self.serial, "flush {}",  time); };
-            let res = until_unless(BACKFLUSH_ON_MILLIS, || self.backflush.is_low(), flush);
-            self.pump.set_low();
-            self.valve.set_low();
-            let wait = |time| { let _ = ufmt::uwriteln!(self.serial, "wait {}",  time); };
-            if let Conclusion::Finished = res {
-                until_unless(BACKFLUSH_PAUSE_MILLIS, || self.backflush.is_low(), wait);
-            } else {
-                return res
-            }
-        }
-        Conclusion::Finished
     }
 }
 
@@ -266,8 +221,4 @@ where F: Fn() -> bool,
     Conclusion::Finished
 }
 
-/// Backflush the machine.
-const BACKFLUSH_REPEATS: u16 = 5;
-const BACKFLUSH_ON_MILLIS: u16 = 5000;
-const BACKFLUSH_PAUSE_MILLIS: u16 = 7000;
 

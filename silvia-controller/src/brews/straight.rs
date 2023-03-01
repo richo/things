@@ -2,7 +2,7 @@ use crate::{Brew, Silvia, until_unless, Conclusion};
 
 /// A straight brew, this is basically the simplest possible profile. Pump turns on for 35s, then
 /// turns off.
-struct StraightBrew;
+pub struct StraightBrew;
 
 impl Brew for StraightBrew {
     const LOGLINE: &'static str = "straight";
