@@ -14,13 +14,7 @@ fn mainloop(silvia: &mut Devices) -> Option<Conclusion> {
             }
             silvia.log("-> brew");
 
-            silvia.log("starting infuse");
-            if let Conclusion::Interrupted(millis) = silvia.run_infuse() {
-                return Some(Conclusion::Interrupted(millis));
-            }
-            silvia.log("infusion finished");
-            silvia.log("starting brew");
-            let res = silvia.run_brew();
+            let res = silvia.run_infuse_and_brew();
             match res {
                 Conclusion::Finished => {
                     silvia.log("brew finished");

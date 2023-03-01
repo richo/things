@@ -144,15 +144,32 @@ impl Devices {
     }
 
     pub fn run_infuse_and_brew(&mut self) -> Conclusion {
+        // Enable valve
+        self.valve.set_high();
+        // Pulse pump on and off for 300/200 3 times
+        for t in [200, 300, 400] {
+            self.pump.set_high();
+            let infuse = |time| { let _ = ufmt::uwriteln!(self.serial, "infuse {}",  time); };
+            if let Conclusion::Interrupted(i) = until_unless(t, || self.brew.is_low(), infuse) {
+                self.pump.set_low();
+                return Conclusion::Interrupted(i);
+            }
+            self.pump.set_low();
+            let wait = |time| { let _ = ufmt::uwriteln!(self.serial, "inwait {}",  time); };
+            if let Conclusion::Interrupted(i) = until_unless(200, || self.brew.is_low(), wait) {
+                self.pump.set_low();
+                return Conclusion::Interrupted(i);
+            }
+        }
+
+        // Run the main brew
+        // Infuse leaves the valve closed, but we'll double check
         self.valve.set_high();
         self.pump.set_high();
-        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), |_| {}) {
-            self.pump.set_low();
-            self.valve.set_low();
-            return Conclusion::Interrupted(i);
-        }
-        self.pump.set_low();
-        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), |_| {})
+
+        // We'll run the pump for 35s or until someone stops us
+        let brew = |time| { let _ = ufmt::uwriteln!(self.serial, "brew {}",  time); };
+        until_unless(35000, || self.brew.is_low(), brew)
     }
 
     /// Confirm the solenoid is closed, then run the brew pump for some configurable number of millies,
@@ -217,6 +234,7 @@ pub fn spin_wait() {
 const INFUSE_MILLIS: u16 = 2000;
 const INFUSE_WAIT_MILLIS: u16 = 2500;
 
+// TODO(richo) impl the traits that let me ? this
 pub enum Conclusion {
     Finished,
     /// Contains the number of millis into the operation it was interrupted
@@ -246,5 +264,5 @@ where F: Fn() -> bool,
 /// Backflush the machine.
 const BACKFLUSH_REPEATS: u16 = 5;
 const BACKFLUSH_ON_MILLIS: u16 = 5000;
-const BACKFLUSH_PAUSE_MILLIS: u16 = 9000;
+const BACKFLUSH_PAUSE_MILLIS: u16 = 7000;
 
