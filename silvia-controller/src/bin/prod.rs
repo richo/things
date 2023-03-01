@@ -16,10 +16,10 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
 
             let res = silvia.brew::<ActiveBrew>();
             match res {
-                Conclusion::Finished => {
+                Conclusion::Ok(()) => {
                     silvia.log("brew finished");
                 },
-                Conclusion::Interrupted(millis) => {
+                Conclusion::Err(_) => {
                     silvia.log("brew interupted");
                 },
             }
@@ -33,10 +33,10 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             silvia.log("-> backflush");
             let res = silvia.brew::<brews::BackFlush>();
             match res {
-                Conclusion::Finished => {
+                Conclusion::Ok(()) => {
                     silvia.log("backflush finished");
                 },
-                Conclusion::Interrupted(millis) => {
+                Conclusion::Err(_) => {
                     silvia.log("Backflush interrupted");
                 },
             }
@@ -57,13 +57,13 @@ fn main() -> ! {
                 // Nothing happed, busywait and then continue
                 spin_wait();
             },
-            Some(Conclusion::Interrupted(millis)) => {
+            Some(Conclusion::Err(_)) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
                 while silvia.brew_switch() || silvia.backflush_switch() {
                     spin_wait();
                 }
             }
-            Some(Conclusion::Finished) => {
+            Some(Conclusion::Ok(())) => {
                 // We ran to conclusion, do nothing.
             }
         }

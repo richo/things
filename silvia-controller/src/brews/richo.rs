@@ -11,16 +11,11 @@ impl Brew for RichoBrew {
         for t in [200, 300, 400] {
             silvia.pump.set_high();
             let infuse = |time| { let _ = ufmt::uwriteln!(silvia.serial, "infuse {}",  time); };
-            if let Conclusion::Interrupted(i) = until_unless(t, || silvia.brew.is_low(), infuse) {
-                silvia.pump.set_low();
-                return Conclusion::Interrupted(i);
-            }
+            until_unless(t, || silvia.brew.is_low(), infuse)?;
+
             silvia.pump.set_low();
             let wait = |time| { let _ = ufmt::uwriteln!(silvia.serial, "inwait {}",  time); };
-            if let Conclusion::Interrupted(i) = until_unless(200, || silvia.brew.is_low(), wait) {
-                silvia.pump.set_low();
-                return Conclusion::Interrupted(i);
-            }
+            until_unless(200, || silvia.brew.is_low(), wait)?;
         }
 
         // Run the main brew

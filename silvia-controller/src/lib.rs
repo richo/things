@@ -176,13 +176,32 @@ pub fn spin_wait() {
     arduino_hal::delay_ms(100);
 }
 
-
-// TODO(richo) impl the traits that let me ? this
-pub enum Conclusion {
-    Finished,
-    /// Contains the number of millis into the operation it was interrupted
-    Interrupted(u32),
+pub struct Operation {
+    name: Option<&'static str>,
+    time: u32,
 }
+
+trait OperationExt: Sized {
+    fn interrupted(name: &'static str, time: u32) -> Self;
+
+
+    fn time(time: u32) -> Self;
+}
+
+impl OperationExt for Result<(), Operation> {
+    fn interrupted(name: &'static str, time: u32) -> Self {
+        Err(Operation { name: Some(name), time})
+    }
+
+
+    fn time(time: u32) -> Self {
+        Err(Operation { name: None, time })
+    }
+}
+
+
+/// Either Ok, or Err(millis the operation ran for)
+pub type Conclusion = Result<(), Operation>;
 
 const RESOLUTION: u16 = 100;
 fn until_unless<F, P>(millis: u16, unless: F, mut progress: P) -> Conclusion
@@ -196,12 +215,12 @@ where F: Fn() -> bool,
             while unless() {
                 arduino_hal::delay_ms(RESOLUTION);
             }
-            return Conclusion::Interrupted(millis::millis() - start);
+            return Conclusion::time(millis::millis() - start);
         }
         progress(millis::millis() - start);
         arduino_hal::delay_ms(RESOLUTION);
     }
-    Conclusion::Finished
+    Ok(())
 }
 
 

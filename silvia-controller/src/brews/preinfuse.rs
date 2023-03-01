@@ -15,16 +15,12 @@ impl Brew for PreInfuse {
         silvia.pump.set_high();
 
         // Infuse the puck by closing the solenoid and running the pump
-        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || silvia.brew.is_low(), |_| {}) {
-            return Conclusion::Interrupted(i);
+        until_unless(INFUSE_MILLIS, || silvia.brew.is_low(), |_| {})?;
 
-        }
         silvia.valve.set_low();
         silvia.pump.set_low();
 
-        if let Conclusion::Interrupted(i) = until_unless(INFUSE_WAIT_MILLIS, || silvia.brew.is_low(), |_| {}) {
-            return Conclusion::Interrupted(i);
-        }
+        until_unless(INFUSE_WAIT_MILLIS, || silvia.brew.is_low(), |_| {})?;
 
         silvia.valve.set_high();
         silvia.pump.set_high();

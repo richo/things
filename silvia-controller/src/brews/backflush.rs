@@ -12,19 +12,16 @@ impl Brew for BackFlush {
     const LOGLINE: &'static str = "backflush";
     fn brew(silvia: &mut Silvia) -> Conclusion {
         for _ in 0..BACKFLUSH_REPEATS {
+            let flush = |time| { let _ = ufmt::uwriteln!(silvia.serial, "flush {}",  time); };
             silvia.valve.set_high();
             silvia.pump.set_high();
-            let flush = |time| { let _ = ufmt::uwriteln!(silvia.serial, "flush {}",  time); };
-            let res = until_unless(BACKFLUSH_ON_MILLIS, || silvia.backflush.is_low(), flush);
+            until_unless(BACKFLUSH_ON_MILLIS, || silvia.backflush.is_low(), flush)?;
+
+            let wait = |time| { let _ = ufmt::uwriteln!(silvia.serial, "wait {}",  time); };
             silvia.pump.set_low();
             silvia.valve.set_low();
-            let wait = |time| { let _ = ufmt::uwriteln!(silvia.serial, "wait {}",  time); };
-            if let Conclusion::Finished = res {
-                until_unless(BACKFLUSH_PAUSE_MILLIS, || silvia.backflush.is_low(), wait);
-            } else {
-                return res
-            }
+            until_unless(BACKFLUSH_PAUSE_MILLIS, || silvia.backflush.is_low(), wait)?;
         }
-        Conclusion::Finished
+        Ok(())
     }
 }
