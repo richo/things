@@ -136,7 +136,7 @@ impl Devices {
         let _ = self.lcd.write_str(msg, &mut self.delay);
     }
 
-    pub fn millis() -> u32 {
+    pub fn millis(&mut self) -> u32 {
         millis::millis()
     }
 
@@ -149,7 +149,7 @@ impl Devices {
 
         // We'll run the pump for 35s or until someone stops us
         // TODO(richo) Again holy shit this should be an interrupt thing
-        until_unless(3500, || self.brew.is_low())
+        until_unless(3500, || self.brew.is_low(), None)
     }
 
     #[inline(always)]
@@ -162,13 +162,13 @@ impl Devices {
         // finished.
         self.valve.set_high();
         self.pump.set_high();
-        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low()) {
+        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low(), None) {
             self.pump.set_low();
             self.valve.set_low();
             return Conclusion::Interrupted(i);
         }
         self.pump.set_low();
-        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low())
+        until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low(), None)
     }
 
     pub fn run_backflush(&mut self) -> Conclusion {
@@ -176,11 +176,11 @@ impl Devices {
         for _ in 0..BACKFLUSH_REPEATS {
             self.valve.set_high();
             self.pump.set_high();
-            let res = until_unless(BACKFLUSH_ON_MILLIS, || self.backflush.is_low());
+            let res = until_unless(BACKFLUSH_ON_MILLIS, || self.backflush.is_low(), None);
             self.pump.set_low();
             self.valve.set_low();
             if let Conclusion::Finished = res {
-                until_unless(BACKFLUSH_PAUSE_MILLIS, || self.backflush.is_low());
+                until_unless(BACKFLUSH_PAUSE_MILLIS, || self.backflush.is_low(), None);
             } else {
                 return res
             }
@@ -206,15 +206,17 @@ pub enum Conclusion {
 }
 
 const RESOLUTION: u16 = 20;
-fn until_unless<F>(millis: u16, unless: F) -> Conclusion
+fn until_unless<F>(millis: u16, unless: F, progress: Option<fn(u32)>) -> Conclusion
 where F: Fn() -> bool {
-    for i in 0..(millis / RESOLUTION) {
+    let start = millis::millis();
+    let mut target = start + millis as u32;
+    while millis::millis() < target {
         if unless() {
             // Wait until the condition clears
             while unless() {
                 arduino_hal::delay_ms(RESOLUTION);
             }
-            return Conclusion::Interrupted(i * RESOLUTION);
+            return Conclusion::Interrupted((millis::millis() - start) as u16);
         }
         arduino_hal::delay_ms(RESOLUTION);
     }
