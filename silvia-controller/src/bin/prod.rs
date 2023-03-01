@@ -15,8 +15,8 @@ fn mainloop(silvia: &mut Devices) -> Option<Conclusion> {
             silvia.log("-> brew");
 
             silvia.log("starting infuse");
-            if let Conclusion::Stopped = silvia.run_infuse() {
-                return Some(Conclusion::Stopped);
+            if let Conclusion::Interrupted(millis) = silvia.run_infuse() {
+                return Some(Conclusion::Interrupted(millis));
             }
             silvia.log("infusion finished");
             silvia.log("starting brew");
@@ -25,7 +25,7 @@ fn mainloop(silvia: &mut Devices) -> Option<Conclusion> {
                 Conclusion::Finished => {
                     silvia.log("brew finished");
                 },
-                Conclusion::Stopped => {
+                Conclusion::Interrupted(millis) => {
                     silvia.log("brew interupted");
                 },
             }
@@ -42,7 +42,7 @@ fn mainloop(silvia: &mut Devices) -> Option<Conclusion> {
                 Conclusion::Finished => {
                     silvia.log("backflush finished");
                 },
-                Conclusion::Stopped => {
+                Conclusion::Interrupted(millis) => {
                     silvia.log("Backflush interrupted");
                 },
             }
@@ -63,7 +63,7 @@ fn main() -> ! {
                 // Nothing happed, busywait and then continue
                 spin_wait();
             },
-            Some(Conclusion::Stopped) => {
+            Some(Conclusion::Interrupted(millis)) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
                 while silvia.brew_switch() || silvia.backflush_switch() {
                     spin_wait();

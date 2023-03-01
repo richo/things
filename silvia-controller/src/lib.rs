@@ -154,10 +154,10 @@ impl Devices {
         // finished.
         self.valve.set_high();
         self.pump.set_high();
-        if let Conclusion::Stopped = until_unless(INFUSE_MILLIS, || self.brew.is_low()) {
+        if let Conclusion::Interrupted(i) = until_unless(INFUSE_MILLIS, || self.brew.is_low()) {
             self.pump.set_low();
             self.valve.set_low();
-            return Conclusion::Stopped;
+            return Conclusion::Interrupted(i);
         }
         self.pump.set_low();
         until_unless(INFUSE_WAIT_MILLIS, || self.brew.is_low())
@@ -191,24 +191,22 @@ pub fn spin_wait() {
 const INFUSE_MILLIS: u16 = 2000;
 const INFUSE_WAIT_MILLIS: u16 = 2500;
 
-
 pub enum Conclusion {
     Finished,
-    Stopped,
+    /// Contains the number of millis into the operation it was interrupted
+    Interrupted(u16),
 }
-
-
 
 const RESOLUTION: u16 = 20;
 fn until_unless<F>(millis: u16, unless: F) -> Conclusion
 where F: Fn() -> bool {
-    for _ in 0..(millis / RESOLUTION) {
+    for i in 0..(millis / RESOLUTION) {
         if unless() {
             // Wait until the condition clears
             while unless() {
                 arduino_hal::delay_ms(RESOLUTION);
             }
-            return Conclusion::Stopped;
+            return Conclusion::Interrupted(i * RESOLUTION);
         }
         arduino_hal::delay_ms(RESOLUTION);
     }
