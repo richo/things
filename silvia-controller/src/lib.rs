@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(abi_avr_interrupt)]
 
 use panic_halt as _;
 pub use arduino_hal::prelude::*;
@@ -12,6 +13,8 @@ use hd44780_driver::{
     HD44780,
     bus::FourBitBus,
 };
+
+pub mod millis;
 
 
 // type PUMP = Pin<Output, PB2>;
@@ -37,6 +40,7 @@ pub struct Devices {
 impl Devices {
     pub fn new() -> Self {
         let dp = arduino_hal::Peripherals::take().unwrap();
+        millis::millis_init(dp.TC0);
         let pins = arduino_hal::pins!(dp);
         let serial = arduino_hal::default_serial!(dp, pins, 57600);
 
@@ -130,6 +134,10 @@ impl Devices {
         // TODO(richo) is it actually possible to handle errors here?
         let _ = self.lcd.clear(&mut self.delay);
         let _ = self.lcd.write_str(msg, &mut self.delay);
+    }
+
+    pub fn millis() -> u32 {
+        millis::millis()
     }
 
     /// Confirm the solenoid is closed, then run the brew pump for some configurable number of millies,
