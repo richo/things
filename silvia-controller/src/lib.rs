@@ -12,10 +12,14 @@ use arduino_hal::hal::port::mode::{Input, Output, PullUp};
 use hd44780_driver::{
     HD44780,
     bus::FourBitBus,
+    error::Error as DisplayError,
 };
 
 pub mod millis;
 pub mod brews;
+mod formatting;
+
+use formatting::BoundDisplay;
 
 pub trait Brew {
     const LOGLINE: &'static str;
@@ -151,6 +155,35 @@ impl Silvia {
         &mut self.led
     }
 
+    pub fn write_time(&mut self, time: u32) -> Result<(), DisplayError> {
+        let secs = time / 1000;
+        let huns = time % 100;
+
+        let mut pos = 9;
+        if secs < 10 {
+            pos += 1
+        }
+
+        self.lcd.set_cursor_pos(pos, &mut self.delay)?;
+        let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
+        ufmt::uwriteln!(lcd, "{}.{}", secs, huns)
+    }
+
+    pub fn write_title(&mut self, title: &str) -> Result<(), DisplayError> {
+        self.lcd.clear(&mut self.delay)?;
+        let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
+        ufmt::uwriteln!(lcd, "{}", title[..9])
+    }
+
+    pub fn report(&mut self, op: Operation) -> Result<(), DisplayError> {
+        self.lcd.clear(&mut self.delay)?;
+        if let Some(msg) = op.name {
+            self.write_title(msg)?;
+        }
+
+        self.write_time(op.time)
+    }
+
     pub fn display<'a>(&'a self) -> &'a Display {
         &self.lcd
     }
@@ -208,7 +241,7 @@ fn until_unless<F, P>(millis: u16, unless: F, mut progress: P) -> Conclusion
 where F: Fn() -> bool,
       P: FnMut(u32) {
     let start = millis::millis();
-    let mut target = start + millis as u32;
+    let target = start + millis as u32;
     while millis::millis() < target {
         if unless() {
             // Wait until the condition clears
