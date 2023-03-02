@@ -53,6 +53,7 @@ fn main() -> ! {
 
     loop {
         silvia.reinit();
+        silvia.write_title("ready");
         silvia.delay_ms(2000);
         let res = silvia.brew::<ActiveBrew>();
         match mainloop(&mut silvia) {
