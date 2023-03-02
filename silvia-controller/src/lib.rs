@@ -183,7 +183,6 @@ impl Silvia {
     }
 
     pub fn report(&mut self, op: Operation) -> Result<(), DisplayError> {
-        self.lcd.clear(&mut self.delay)?;
         if let Some(msg) = op.name {
             self.write_title(msg)?;
         }
@@ -193,12 +192,6 @@ impl Silvia {
 
     pub fn display<'a>(&'a self) -> &'a Display {
         &self.lcd
-    }
-
-    pub fn display_str(&mut self, msg: &str) -> () {
-        // TODO(richo) is it actually possible to handle errors here?
-        let _ = self.lcd.clear(&mut self.delay);
-        let _ = self.lcd.write_str(msg, &mut self.delay);
     }
 
     pub fn millis(&mut self) -> u32 {
