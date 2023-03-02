@@ -20,6 +20,6 @@ fn main() -> ! {
         silvia.write_time(time);
         spin_wait();
 
-        let _ = ufmt::uwriteln!(silvia.serial(), "{}",  crate::is_reversed());
+        let _ = ufmt::uwriteln!(silvia.serial(), "{}",  crate::brew_switch());
     }
 }

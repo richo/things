@@ -15,7 +15,7 @@ use hd44780_driver::{
     bus::FourBitBus,
     error::Error as DisplayError,
 };
-use core::sync::atomic::{AtomicBool, Ordering};
+pub use core::sync::atomic::{AtomicBool, Ordering};
 
 pub mod millis;
 pub mod brews;
@@ -26,10 +26,12 @@ pub enum Switch {
     BackFlush,
 }
 
-static REVERSED: AtomicBool = AtomicBool::new(false);
+pub static REVERSED: AtomicBool = AtomicBool::new(false);
 
 pub fn is_reversed() -> bool {
-    REVERSED.load(Ordering::SeqCst)
+    avr_device::interrupt::free(|| {
+        REVERSED.load(Ordering::Relaxed);
+    })
 }
 
 #[avr_device::interrupt(atmega328p)]
@@ -89,6 +91,7 @@ impl Silvia {
 
         millis::millis_init(dp.TC0);
         unsafe { avr_device::interrupt::enable() };
+        core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
 
         let pins = arduino_hal::pins!(dp);
         let serial = arduino_hal::default_serial!(dp, pins, 57600);
