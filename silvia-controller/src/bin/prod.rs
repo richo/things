@@ -30,6 +30,9 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             while silvia.backflush_switch() {
                 spin_wait();
             }
+            // Specialcase backflushing and show that for a sec
+            silvia.show_brew_name(brews::BackFlush::NAME);
+
             silvia.log("-> backflush");
             let res = silvia.brew::<brews::BackFlush>();
             match res {
@@ -40,6 +43,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
                     silvia.log("Backflush interrupted");
                 },
             }
+            silvia.show_brew_name(ActiveBrew::NAME);
             return Some(res);
         }
 
