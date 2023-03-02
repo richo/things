@@ -6,7 +6,11 @@ use silvia_controller::*;
 fn main() -> ! {
     let mut silvia = Silvia::new();
 
-    silvia.display_str("Coffee!");
+    // silvia.write_title("Coffee!");
 
-    loop {}
+    loop {
+        let time = silvia.millis();
+        silvia.write_time(time);
+        spin_wait();
+    }
 }

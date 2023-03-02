@@ -157,22 +157,22 @@ impl Silvia {
 
     pub fn write_time(&mut self, time: u32) -> Result<(), DisplayError> {
         let secs = time / 1000;
-        let huns = time % 100;
+        let tenths = (time % 1000) / 100;
 
-        let mut pos = 9;
+        let mut pos = 12;
         if secs < 10 {
             pos += 1
         }
 
         self.lcd.set_cursor_pos(pos, &mut self.delay)?;
         let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
-        ufmt::uwriteln!(lcd, "{}.{}", secs, huns)
+        ufmt::uwriteln!(lcd, "{}.{}", secs, tenths)
     }
 
     pub fn write_title(&mut self, title: &str) -> Result<(), DisplayError> {
         self.lcd.clear(&mut self.delay)?;
         let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
-        ufmt::uwriteln!(lcd, "{}", title[..9])
+        ufmt::uwriteln!(lcd, "{}", title)
     }
 
     pub fn report(&mut self, op: Operation) -> Result<(), DisplayError> {
