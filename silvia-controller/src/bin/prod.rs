@@ -49,6 +49,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
+    silvia.show_brew_name(ActiveBrew::LOGLINE);
 
     loop {
         silvia.reinit();

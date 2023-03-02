@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(abi_avr_interrupt)]
 
+use core::cmp;
 use panic_halt as _;
 pub use arduino_hal::prelude::*;
 use arduino_hal::hal::pac::USART0;
@@ -155,6 +156,12 @@ impl Silvia {
         &mut self.led
     }
 
+    pub fn show_brew_name(&mut self, name: &str) -> Result<(), DisplayError> {
+        let bytes = pad_str(name);
+        self.lcd.set_cursor_pos(40, &mut self.delay)?;
+        self.lcd.write_bytes(&bytes, &mut self.delay)
+    }
+
     pub fn write_time(&mut self, time: u32) -> Result<(), DisplayError> {
         let secs = time / 1000;
         let tenths = (time % 1000) / 100;
@@ -170,15 +177,15 @@ impl Silvia {
     }
 
     pub fn write_title(&mut self, title: &str) -> Result<(), DisplayError> {
-        self.lcd.clear(&mut self.delay)?;
-        let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
-        ufmt::uwriteln!(lcd, "{}", title)
+        self.lcd.set_cursor_pos(0, &mut self.delay)?;
+        let bytes = pad_str(title);
+        self.lcd.write_bytes(&bytes, &mut self.delay)
     }
 
     pub fn report(&mut self, op: Operation) -> Result<(), DisplayError> {
         self.lcd.clear(&mut self.delay)?;
         if let Some(msg) = op.name {
-            self.write_title(&msg[0..4])?;
+            self.write_title(msg)?;
         }
 
         self.write_time(op.time)
@@ -256,4 +263,10 @@ where F: Fn() -> bool,
     Ok(())
 }
 
+/// Pad a string out to 16 characters, in order to make it consume a full line
+fn pad_str(msg: &str) -> [u8; 16] {
+    let mut ary = [b' '; 16];
+    ary[0..msg.len()].copy_from_slice(msg.as_bytes());
+    ary
+}
 

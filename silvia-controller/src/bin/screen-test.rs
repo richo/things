@@ -5,6 +5,7 @@ use silvia_controller::*;
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
+    silvia.show_brew_name("richo shot").unwrap();
 
     let time = silvia.millis();
     let op = Conclusion::interrupted("testing!", time).unwrap_err();
