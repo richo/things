@@ -1,7 +1,6 @@
 #![no_std]
 #![feature(abi_avr_interrupt)]
 
-use core::cmp;
 use panic_halt as _;
 pub use arduino_hal::prelude::*;
 use arduino_hal::hal::pac::USART0;
@@ -240,7 +239,7 @@ impl Silvia {
 
     pub fn until_unless(&mut self, op: &'static str, millis: u16, stop: StopReason) -> Conclusion {
         // TODO(richo) Show goal time in the lower right?
-        self.write_title(op);
+        discard(self.write_title(op));
         // self.write_goal(millis as u32);
 
         let start = millis::millis();
@@ -253,12 +252,19 @@ impl Silvia {
                 }
                 return Conclusion::time(millis::millis() - start);
             }
-            self.write_time(millis::millis() - start);
+            discard(self.write_time(millis::millis() - start));
             arduino_hal::delay_ms(RESOLUTION);
         }
         Ok(())
     }
 
+}
+
+#[inline(always)]
+/// Discard a Result. This is for the various Display related functions that we don't want to block
+/// on. TODO(richo) I think the display being write only means these are functionally infallible
+/// anyway.
+fn discard(_: Result<(), DisplayError>) {
 }
 
 
