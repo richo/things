@@ -6,7 +6,9 @@ use silvia_controller::*;
 fn main() -> ! {
     let mut silvia = Silvia::new();
 
-    // silvia.write_title("Coffee!");
+    let time = silvia.millis();
+    let op = Conclusion::interrupted("testing!", time).unwrap_err();
+    silvia.report(op);
 
     loop {
         let time = silvia.millis();

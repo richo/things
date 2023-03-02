@@ -178,7 +178,7 @@ impl Silvia {
     pub fn report(&mut self, op: Operation) -> Result<(), DisplayError> {
         self.lcd.clear(&mut self.delay)?;
         if let Some(msg) = op.name {
-            self.write_title(msg)?;
+            self.write_title(&msg[0..4])?;
         }
 
         self.write_time(op.time)
@@ -214,7 +214,7 @@ pub struct Operation {
     time: u32,
 }
 
-trait OperationExt: Sized {
+pub trait OperationExt: Sized {
     fn interrupted(name: &'static str, time: u32) -> Self;
 
 
