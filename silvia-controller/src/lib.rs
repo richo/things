@@ -15,6 +15,7 @@ use hd44780_driver::{
     bus::FourBitBus,
     error::Error as DisplayError,
 };
+use core::sync::atomic::{AtomicBool, Ordering};
 
 pub mod millis;
 pub mod brews;
@@ -23,6 +24,18 @@ mod formatting;
 pub enum Switch {
     Brew,
     BackFlush,
+}
+
+static REVERSED: AtomicBool = AtomicBool::new(false);
+
+pub fn is_reversed() -> bool {
+    REVERSED.load(Ordering::SeqCst)
+}
+
+#[avr_device::interrupt(atmega328p)]
+fn INT0() {
+    let current = REVERSED.load(Ordering::SeqCst);
+    REVERSED.store(!current, Ordering::SeqCst);
 }
 
 use formatting::BoundDisplay;
@@ -70,6 +83,10 @@ impl Silvia {
     pub fn new() -> Self {
         let dp = arduino_hal::Peripherals::take().unwrap();
 
+        dp.EXINT.eicra.modify(|_, w| w.isc0().bits(0x02));
+        // Enable the INT0 interrupt source.
+        dp.EXINT.eimsk.modify(|_, w| w.int0().set_bit());
+
         millis::millis_init(dp.TC0);
         unsafe { avr_device::interrupt::enable() };
 
@@ -79,6 +96,8 @@ impl Silvia {
         // Display
         let rs = pins.d12.into_output();
         let e = pins.d11.into_output();
+
+        let d2 = pins.d2.into_pull_up_input();
 
         let d4 = pins.d6.into_output();
         let d5 = pins.d5.into_output();
