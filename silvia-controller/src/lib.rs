@@ -38,8 +38,9 @@ pub trait Brew {
         res
     }
 
-    fn log(silvia: &mut Silvia, msg: &'static str) {
-        let _ = ufmt::uwriteln!(silvia.serial, "{} {}",  Self::NAME, msg);
+    fn log(_silvia: &mut Silvia, _msg: &'static str) {
+        #[cfg(feature = "logging")]
+        let _ = ufmt::uwriteln!(_silvia.serial, "{} {}",  Self::NAME, _msg);
     }
 
     /// The main function which interacts with the machine to brew.
@@ -61,6 +62,7 @@ pub enum StopReason {
 }
 
 pub struct Silvia {
+    #[cfg(feature = "logging")]
     serial: Serial,
     lcd: Display,
     delay: arduino_hal::Delay,
@@ -111,6 +113,7 @@ impl Silvia {
         let valve = pins.d8.into_output();
 
         let mut res = Silvia {
+            #[cfg(feature = "logging")]
             serial,
             lcd,
             delay,
@@ -129,16 +132,22 @@ impl Silvia {
         self.valve.set_low();
     }
 
+    #[cfg(feature = "logging")]
     pub fn serial(&mut self) -> &mut Serial {
         &mut self.serial
     }
 
-    pub fn log(&mut self, msg: &str) {
-        let _ = ufmt::uwriteln!(self.serial, "{}",  msg);
+    pub fn log(&mut self, _msg: &str) {
+        #[cfg(feature = "logging")]
+        let _ = ufmt::uwriteln!(self.serial, "{}",  _msg);
     }
 
     pub fn brew<B: Brew>(&mut self) -> Conclusion {
-        B::brew(self)
+        let res = B::brew(self);
+        // Turn off all the switches
+        self.brew_off();
+        self.valve_off();
+        res
     }
 
     pub fn brew_on(&mut self) {
@@ -201,6 +210,7 @@ impl Silvia {
     }
 
     pub fn write_title(&mut self, title: &str) -> Result<(), DisplayError> {
+        self.log(title);
         self.lcd.set_cursor_pos(0, &mut self.delay)?;
         let bytes = pad_str(title);
         self.lcd.write_bytes(&bytes, &mut self.delay)

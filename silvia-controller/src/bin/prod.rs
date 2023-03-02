@@ -54,11 +54,8 @@ fn main() -> ! {
     loop {
         silvia.reinit();
         silvia.write_title("ready");
-        silvia.delay_ms(2000);
-        let res = silvia.brew::<ActiveBrew>();
         // Lock out the machine for a couple of seconds, so that pressing a button right as it
         // stops doesn't start a new one.
-        silvia.until_unless("standby", 2000, StopReason::None);
 
         match mainloop(&mut silvia) {
             None => {
@@ -70,9 +67,11 @@ fn main() -> ! {
                 while silvia.brew_switch() || silvia.backflush_switch() {
                     spin_wait();
                 }
+                let _ = silvia.until_unless("standby", 2000, StopReason::None);
             }
             Some(Conclusion::Ok(())) => {
                 // We ran to conclusion, do nothing.
+                let _ = silvia.until_unless("standby", 2000, StopReason::None);
             }
         }
     }
