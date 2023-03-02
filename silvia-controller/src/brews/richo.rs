@@ -1,4 +1,4 @@
-use crate::{Brew, Silvia, Conclusion, Switch};
+use crate::{Brew, Silvia, Conclusion, StopReason};
 
 /// richo's playground brew
 pub struct RichoBrew;
@@ -12,10 +12,10 @@ impl Brew for RichoBrew {
         // TODO(richo) Maybe the counter shouldn't reset for these?
         for t in [200, 300, 400] {
             silvia.pump.set_high();
-            silvia.until_unless("ramp-up", t, Switch::Brew)?;
+            silvia.until_unless("ramp-up", t, StopReason::Brew)?;
 
             silvia.pump.set_low();
-            silvia.until_unless("ramp-up", 200, Switch::Brew)?;
+            silvia.until_unless("ramp-up", 200, StopReason::Brew)?;
         }
 
         // Run the main brew
@@ -24,6 +24,6 @@ impl Brew for RichoBrew {
         silvia.pump.set_high();
 
         // We'll run the pump for 35s or until someone stops us
-        silvia.until_unless("brew", 35000, Switch::Brew)
+        silvia.until_unless("brew", 35000, StopReason::Either)
     }
 }

@@ -56,6 +56,10 @@ fn main() -> ! {
         silvia.write_title("ready");
         silvia.delay_ms(2000);
         let res = silvia.brew::<ActiveBrew>();
+        // Lock out the machine for a couple of seconds, so that pressing a button right as it
+        // stops doesn't start a new one.
+        silvia.until_unless("standby", 2000, StopReason::None);
+
         match mainloop(&mut silvia) {
             None => {
                 // Nothing happed, busywait and then continue

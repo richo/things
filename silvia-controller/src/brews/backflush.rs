@@ -1,4 +1,4 @@
-use crate::{Brew, Silvia, Conclusion, Switch};
+use crate::{Brew, Silvia, Conclusion, StopReason};
 
 /// Backflush the machine
 pub struct BackFlush;
@@ -10,15 +10,16 @@ const BACKFLUSH_PAUSE_MILLIS: u16 = 7000;
 
 impl Brew for BackFlush {
     const NAME: &'static str = "backflush";
+
     fn brew(silvia: &mut Silvia) -> Conclusion {
         for _ in 0..BACKFLUSH_REPEATS {
             silvia.valve.set_high();
             silvia.pump.set_high();
-            silvia.until_unless("flush", BACKFLUSH_ON_MILLIS, Switch::BackFlush)?;
+            silvia.until_unless("flush", BACKFLUSH_ON_MILLIS, StopReason::Either)?;
 
             silvia.pump.set_low();
             silvia.valve.set_low();
-            silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, Switch::BackFlush)?;
+            silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, StopReason::Either)?;
         }
         Ok(())
     }

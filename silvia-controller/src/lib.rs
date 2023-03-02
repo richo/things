@@ -53,6 +53,14 @@ pub trait Brew {
 type Display = HD44780<FourBitBus<Pin<Output, PB4>, Pin<Output, PB3>, Pin<Output, PD6>, Pin<Output, PD5>, Pin<Output, PD4>, Pin<Output, PD3>>>;
 type Serial = arduino_hal::usart::Usart<USART0, Pin<Input, PD0>, Pin<Output, PD1>>;
 
+#[derive(Clone, Copy)]
+pub enum StopReason {
+    Brew,
+    BackFlush,
+    Either,
+    None,
+}
+
 pub struct Silvia {
     serial: Serial,
     lcd: Display,
@@ -221,12 +229,16 @@ impl Silvia {
     }
 
     // TODO(richo) This is a hack but for now either button can cancel
-    fn unless(&mut self) -> bool {
-        self.brew.is_low() ||
-            self.backflush.is_low()
+    fn unless(&mut self, reason: StopReason) -> bool {
+        match reason {
+            StopReason::Brew => self.brew.is_low(),
+            StopReason::BackFlush => self.backflush.is_low(),
+            StopReason::Either => self.brew.is_low() || self.backflush.is_low(),
+            StopReason::None => false,
+        }
     }
 
-    fn until_unless(&mut self, op: &'static str, millis: u16, switch: Switch) -> Conclusion {
+    pub fn until_unless(&mut self, op: &'static str, millis: u16, stop: StopReason) -> Conclusion {
         // TODO(richo) Show goal time in the lower right?
         self.write_title(op);
         // self.write_goal(millis as u32);
@@ -234,9 +246,9 @@ impl Silvia {
         let start = millis::millis();
         let target = start + millis as u32;
         while millis::millis() < target {
-            if self.unless() {
+            if self.unless(stop) {
                 // Wait until the condition clears
-                while self.unless() {
+                while self.unless(stop) {
                     arduino_hal::delay_ms(RESOLUTION);
                 }
                 return Conclusion::time(millis::millis() - start);
