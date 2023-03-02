@@ -1,21 +1,21 @@
-use crate::{Brew, Silvia, until_unless, Conclusion};
+use crate::{Brew, Silvia, Conclusion, Switch};
 
 /// richo's playground brew
 pub struct RichoBrew;
 
 impl Brew for RichoBrew {
-    const LOGLINE: &'static str = "straight";
+    const NAME: &'static str = "richo";
+
     fn brew(silvia: &mut Silvia) -> Conclusion {
         silvia.valve.set_high();
         // Pulse pump on and off for 300/200 3 times
+        // TODO(richo) Maybe the counter shouldn't reset for these?
         for t in [200, 300, 400] {
             silvia.pump.set_high();
-            let infuse = |time| { let _ = ufmt::uwriteln!(silvia.serial, "infuse {}",  time); };
-            until_unless(t, || silvia.brew.is_low(), infuse)?;
+            silvia.until_unless("ramp-up", t, Switch::Brew)?;
 
             silvia.pump.set_low();
-            let wait = |time| { let _ = ufmt::uwriteln!(silvia.serial, "inwait {}",  time); };
-            until_unless(200, || silvia.brew.is_low(), wait)?;
+            silvia.until_unless("ramp-up", 200, Switch::Brew)?;
         }
 
         // Run the main brew
@@ -24,7 +24,6 @@ impl Brew for RichoBrew {
         silvia.pump.set_high();
 
         // We'll run the pump for 35s or until someone stops us
-        let brew = |time| { let _ = ufmt::uwriteln!(silvia.serial, "brew {}",  time); };
-        until_unless(35000, || silvia.brew.is_low(), brew)
+        silvia.until_unless("brew", 35000, Switch::Brew)
     }
 }

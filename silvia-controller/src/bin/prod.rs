@@ -49,10 +49,12 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
-    silvia.show_brew_name(ActiveBrew::LOGLINE);
+    silvia.show_brew_name(ActiveBrew::NAME);
 
     loop {
         silvia.reinit();
+        silvia.delay_ms(2000);
+        let res = silvia.brew::<ActiveBrew>();
         match mainloop(&mut silvia) {
             None => {
                 // Nothing happed, busywait and then continue

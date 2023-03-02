@@ -20,10 +20,16 @@ pub mod millis;
 pub mod brews;
 mod formatting;
 
+pub enum Switch {
+    Brew,
+    BackFlush,
+}
+
 use formatting::BoundDisplay;
 
 pub trait Brew {
-    const LOGLINE: &'static str;
+    const NAME: &'static str;
+
     fn run(silvia: &mut Silvia) -> Conclusion {
         Self::log(silvia, "starting brew");
         let res = Self::brew(silvia);
@@ -34,7 +40,7 @@ pub trait Brew {
     }
 
     fn log(silvia: &mut Silvia, msg: &'static str) {
-        let _ = ufmt::uwriteln!(silvia.serial, "{} {}",  Self::LOGLINE, msg);
+        let _ = ufmt::uwriteln!(silvia.serial, "{} {}",  Self::NAME, msg);
     }
 
     /// The main function which interacts with the machine to brew.
@@ -162,13 +168,24 @@ impl Silvia {
         self.lcd.write_bytes(&bytes, &mut self.delay)
     }
 
+    pub fn write_goal(&mut self, time: u32) -> Result<(), DisplayError> {
+        self.write_formatted_time(time, true)
+    }
+
     pub fn write_time(&mut self, time: u32) -> Result<(), DisplayError> {
+        self.write_formatted_time(time, false)
+    }
+
+    pub fn write_formatted_time(&mut self, time: u32, second: bool) -> Result<(), DisplayError> {
         let secs = time / 1000;
         let tenths = (time % 1000) / 100;
 
         let mut pos = 12;
         if secs < 10 {
             pos += 1
+        }
+        if second {
+            pos += 40
         }
 
         self.lcd.set_cursor_pos(pos, &mut self.delay)?;
@@ -202,6 +219,34 @@ impl Silvia {
     pub fn delay_ms(&self, time: u16) {
         arduino_hal::delay_ms(time)
     }
+
+    // TODO(richo) This is a hack but for now either button can cancel
+    fn unless(&mut self) -> bool {
+        self.brew.is_low() ||
+            self.backflush.is_low()
+    }
+
+    fn until_unless(&mut self, op: &'static str, millis: u16, switch: Switch) -> Conclusion {
+        // TODO(richo) Show goal time in the lower right?
+        self.write_title(op);
+        // self.write_goal(millis as u32);
+
+        let start = millis::millis();
+        let target = start + millis as u32;
+        while millis::millis() < target {
+            if self.unless() {
+                // Wait until the condition clears
+                while self.unless() {
+                    arduino_hal::delay_ms(RESOLUTION);
+                }
+                return Conclusion::time(millis::millis() - start);
+            }
+            self.write_time(millis::millis() - start);
+            arduino_hal::delay_ms(RESOLUTION);
+        }
+        Ok(())
+    }
+
 }
 
 
@@ -237,25 +282,6 @@ impl OperationExt for Result<(), Operation> {
 pub type Conclusion = Result<(), Operation>;
 
 const RESOLUTION: u16 = 100;
-fn until_unless<F, P>(millis: u16, unless: F, mut progress: P) -> Conclusion
-where F: Fn() -> bool,
-      P: FnMut(u32) {
-    let start = millis::millis();
-    let target = start + millis as u32;
-    while millis::millis() < target {
-        if unless() {
-            // Wait until the condition clears
-            while unless() {
-                arduino_hal::delay_ms(RESOLUTION);
-            }
-            return Conclusion::time(millis::millis() - start);
-        }
-        progress(millis::millis() - start);
-        arduino_hal::delay_ms(RESOLUTION);
-    }
-    Ok(())
-}
-
 /// Pad a string out to 16 characters, in order to make it consume a full line
 fn pad_str(msg: &str) -> [u8; 16] {
     let mut ary = [b' '; 16];

@@ -1,4 +1,4 @@
-use crate::{Brew, Silvia, until_unless, Conclusion};
+use crate::{Brew, Silvia, Conclusion, Switch};
 
 /// This is mostly a reimplementation of what the auber does. 1.2s on, 2.5 off, and then a 25s pull. The 3way valve is opened between the preinfuse and brew steps.
 pub struct PreInfuse;
@@ -8,23 +8,23 @@ const INFUSE_WAIT_MILLIS: u16 = 2500;
 const BREW_MILLIS: u16 = 25000;
 
 impl Brew for PreInfuse {
-    const LOGLINE: &'static str = "preinfuse";
+    const NAME: &'static str = "preinfuse";
 
     fn brew(silvia: &mut Silvia) -> Conclusion {
         silvia.valve.set_high();
         silvia.pump.set_high();
 
         // Infuse the puck by closing the solenoid and running the pump
-        until_unless(INFUSE_MILLIS, || silvia.brew.is_low(), |_| {})?;
+        silvia.until_unless("infuse", INFUSE_MILLIS, Switch::Brew)?;
 
         silvia.valve.set_low();
         silvia.pump.set_low();
 
-        until_unless(INFUSE_WAIT_MILLIS, || silvia.brew.is_low(), |_| {})?;
+        silvia.until_unless("wait", INFUSE_WAIT_MILLIS, Switch::Brew)?;
 
         silvia.valve.set_high();
         silvia.pump.set_high();
 
-        until_unless(BREW_MILLIS, || silvia.brew.is_low(), |_| {})
+        silvia.until_unless("brew", BREW_MILLIS, Switch::Brew)
     }
 }
