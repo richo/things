@@ -9,9 +9,11 @@ const BACKFLUSH_ON_MILLIS: u16 = 5000;
 const BACKFLUSH_PAUSE_MILLIS: u16 = 7000;
 
 impl Brew for BackFlush {
-    const NAME: &'static str = "backflush";
+    fn name(&self) -> &'static str {
+        "backflush"
+    }
 
-    fn brew(silvia: &mut Silvia) -> Conclusion {
+    fn brew(&self, silvia: &mut Silvia) -> Conclusion {
         for _ in 0..BACKFLUSH_REPEATS {
             silvia.valve.set_high();
             silvia.pump.set_high();

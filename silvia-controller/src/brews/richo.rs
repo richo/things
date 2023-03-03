@@ -4,9 +4,11 @@ use crate::{Brew, Silvia, Conclusion, StopReason};
 pub struct RichoBrew;
 
 impl Brew for RichoBrew {
-    const NAME: &'static str = "richo";
+    fn name(&self) -> &'static str {
+        "richo"
+    }
 
-    fn brew(silvia: &mut Silvia) -> Conclusion {
+    fn brew(&self, silvia: &mut Silvia) -> Conclusion {
         silvia.valve.set_high();
         // Pulse pump on and off for 300/200 3 times
         // TODO(richo) Maybe the counter shouldn't reset for these?

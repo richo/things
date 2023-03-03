@@ -8,9 +8,11 @@ const INFUSE_WAIT_MILLIS: u16 = 2500;
 const BREW_MILLIS: u16 = 25000;
 
 impl Brew for PreInfuse {
-    const NAME: &'static str = "preinfuse";
+    fn name(&self) -> &'static str {
+        "preinfuse"
+    }
 
-    fn brew(silvia: &mut Silvia) -> Conclusion {
+    fn brew(&self, silvia: &mut Silvia) -> Conclusion {
         silvia.valve.set_high();
         silvia.pump.set_high();
 

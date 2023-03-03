@@ -27,27 +27,21 @@ pub enum Switch {
 use formatting::BoundDisplay;
 
 pub trait Brew {
-    const NAME: &'static str;
-
-    fn run(silvia: &mut Silvia) -> Conclusion {
-        Self::log(silvia, "starting brew");
-        let res = Self::brew(silvia);
+    fn run(&self, silvia: &mut Silvia) -> Conclusion {
+        let res = self.brew(silvia);
         // Confirm all the relays are closed.
         silvia.valve_off();
         silvia.brew_off();
         res
     }
 
-    fn log(_silvia: &mut Silvia, _msg: &'static str) {
-        #[cfg(feature = "logging")]
-        let _ = ufmt::uwriteln!(_silvia.serial, "{} {}",  Self::NAME, _msg);
-    }
+    fn name(&self) -> &'static str;
 
     /// The main function which interacts with the machine to brew.
     ///
     /// You can safely return without turning off pumps and valves, etc, the frameowrk will take
     /// care of resetting things for you.
-    fn brew(silvia: &mut Silvia) -> Conclusion;
+    fn brew(&self, silvia: &mut Silvia) -> Conclusion;
 }
 
 type Display = HD44780<FourBitBus<Pin<Output, PB4>, Pin<Output, PB3>, Pin<Output, PD6>, Pin<Output, PD5>, Pin<Output, PD4>, Pin<Output, PD3>>>;
@@ -151,8 +145,8 @@ impl Silvia {
     }
 
     pub fn do_brew(&mut self) -> Conclusion {
-        let b = self.current_brew();
-        let res = b.brew(self);
+        let b = self.current;
+        let res = b.get().brew(self);
         // Turn off all the switches
         self.brew_off();
         self.valve_off();
@@ -197,7 +191,7 @@ impl Silvia {
     }
 
     pub fn show_current_brew_name(&mut self) -> Result<(), DisplayError> {
-        self.show_brew_name(self.current.name())
+        self.show_brew_name(self.current.get().name())
     }
 
     pub fn show_brew_name(&mut self, name: &'static str) -> Result<(), DisplayError> {

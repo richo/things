@@ -42,36 +42,19 @@ impl BrewContainer {
         }
     }
 
-    pub fn name(&self) -> &'static str {
+    pub fn get(&self) -> &dyn Brew {
         match self {
             BrewContainer::Richo => {
-                RichoBrew::NAME
+                &RichoBrew
             },
             BrewContainer::PreInfuse => {
-                PreInfuse::NAME
+                &PreInfuse
             },
             BrewContainer::Straight => {
-                StraightBrew::NAME
+                &StraightBrew
             },
             BrewContainer::BackFlush => {
-                BackFlush::NAME
-            },
-        }
-    }
-
-    pub fn brew(&self, silvia: &mut Silvia) -> Result<(), Operation> {
-        match self {
-            BrewContainer::Richo => {
-                RichoBrew::brew(silvia)
-            },
-            BrewContainer::PreInfuse => {
-                PreInfuse::brew(silvia)
-            },
-            BrewContainer::Straight => {
-                StraightBrew::brew(silvia)
-            },
-            BrewContainer::BackFlush => {
-                BackFlush::brew(silvia)
+                &BackFlush
             },
         }
     }
