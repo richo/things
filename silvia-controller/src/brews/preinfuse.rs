@@ -15,12 +15,12 @@ impl Brew for PreInfuse {
         silvia.pump.set_high();
 
         // Infuse the puck by closing the solenoid and running the pump
-        silvia.until_unless("infuse", INFUSE_MILLIS, StopReason::Brew)?;
+        silvia.until_unless("infuse", INFUSE_MILLIS, StopReason::Cancel)?;
 
         silvia.valve.set_low();
         silvia.pump.set_low();
 
-        silvia.until_unless("wait", INFUSE_WAIT_MILLIS, StopReason::Brew)?;
+        silvia.until_unless("wait", INFUSE_WAIT_MILLIS, StopReason::Cancel)?;
 
         silvia.valve.set_high();
         silvia.pump.set_high();

@@ -10,12 +10,14 @@ impl Brew for RichoBrew {
         silvia.valve.set_high();
         // Pulse pump on and off for 300/200 3 times
         // TODO(richo) Maybe the counter shouldn't reset for these?
+        // TODO(richo) I think this could be even better with opposing ramps, so shorter gaps and
+        // longer runs until the it just brews.
         for t in [200, 300, 400] {
             silvia.pump.set_high();
-            silvia.until_unless("ramp-up", t, StopReason::Brew)?;
+            silvia.until_unless("ramp-up", t, StopReason::Cancel)?;
 
             silvia.pump.set_low();
-            silvia.until_unless("ramp-up", 200, StopReason::Brew)?;
+            silvia.until_unless("ramp-up", 200, StopReason::Cancel)?;
         }
 
         // Run the main brew

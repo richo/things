@@ -12,6 +12,6 @@ impl Brew for StraightBrew {
         silvia.pump.set_high();
 
         // We'll run the pump for 35s or until someone stops us
-        silvia.until_unless("brew", 3500, StopReason::Brew)
+        silvia.until_unless("brew", 3500, StopReason::Cancel)
     }
 }
