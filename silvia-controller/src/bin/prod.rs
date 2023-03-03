@@ -3,8 +3,6 @@
 
 use silvia_controller::*;
 
-type ActiveBrew = brews::RichoBrew;
-
 fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
         if silvia.brew_switch() {
             silvia.log("brew switch");
@@ -14,7 +12,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             }
             silvia.log("-> brew");
 
-            let res = silvia.brew::<ActiveBrew>();
+            silvia.do_brew();
             match res {
                 Conclusion::Ok(()) => {
                     silvia.log("brew finished");
@@ -43,7 +41,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
                     silvia.log("Backflush interrupted");
                 },
             }
-            silvia.show_brew_name(ActiveBrew::NAME);
+            silvia.reinit();
             return Some(res);
         }
 
@@ -53,7 +51,6 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
-    silvia.show_brew_name(ActiveBrew::NAME);
 
     loop {
         silvia.reinit();

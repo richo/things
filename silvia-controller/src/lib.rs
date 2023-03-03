@@ -73,6 +73,8 @@ pub struct Silvia {
     backflush: Pin<Input<PullUp>, PC5>,
 
     led: Pin<Output, PB5>,
+
+    current: brews::BrewContainer,
 }
 
 impl Silvia {
@@ -112,6 +114,8 @@ impl Silvia {
         let pump = pins.d9.into_output();
         let valve = pins.d8.into_output();
 
+        let current = brews::BrewContainer::default();
+
         let mut res = Silvia {
             #[cfg(feature = "logging")]
             serial,
@@ -122,12 +126,15 @@ impl Silvia {
             brew,
             backflush,
             led,
+
+            current,
         };
         res.reinit();
         res
     }
 
     pub fn reinit(&mut self) {
+        self.show_current_brew_name();
         self.pump.set_low();
         self.valve.set_low();
     }
@@ -142,8 +149,9 @@ impl Silvia {
         let _ = ufmt::uwriteln!(self.serial, "{}",  _msg);
     }
 
-    pub fn brew<B: Brew>(&mut self) -> Conclusion {
-        let res = B::brew(self);
+    pub fn do_brew(&mut self) -> Conclusion {
+        let b = self.current_brew();
+        let res = b.brew(self);
         // Turn off all the switches
         self.brew_off();
         self.valve_off();
@@ -178,7 +186,20 @@ impl Silvia {
         &mut self.led
     }
 
-    pub fn show_brew_name(&mut self, name: &str) -> Result<(), DisplayError> {
+    pub fn current_brew(&self) -> brews::BrewContainer {
+        self.current
+    }
+
+    pub fn next_brew(&mut self) {
+        self.current = self.current.next();
+        self.show_current_brew_name();
+    }
+
+    pub fn show_current_brew_name(&mut self) -> Result<(), DisplayError> {
+        self.show_brew_name(self.current.name())
+    }
+
+    pub fn show_brew_name(&mut self, name: &'static str) -> Result<(), DisplayError> {
         let bytes = pad_str(name);
         self.lcd.set_cursor_pos(40, &mut self.delay)?;
         self.lcd.write_bytes(&bytes, &mut self.delay)
