@@ -12,7 +12,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             }
             silvia.log("-> brew");
 
-            silvia.do_brew();
+            let res = silvia.do_brew();
             match res {
                 Conclusion::Ok(()) => {
                     silvia.log("brew finished");
@@ -23,26 +23,12 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             }
             return Some(res);
         } else if silvia.backflush_switch() {
-            silvia.log("backflush switch");
+            silvia.log("next/cancel switch");
             // Wait for the backflush switch to come up, then start.
             while silvia.backflush_switch() {
                 spin_wait();
             }
-            // Specialcase backflushing and show that for a sec
-            silvia.show_brew_name(brews::BackFlush::NAME);
-
-            silvia.log("-> backflush");
-            let res = silvia.brew::<brews::BackFlush>();
-            match res {
-                Conclusion::Ok(()) => {
-                    silvia.log("backflush finished");
-                },
-                Conclusion::Err(_) => {
-                    silvia.log("Backflush interrupted");
-                },
-            }
-            silvia.reinit();
-            return Some(res);
+            silvia.next_brew();
         }
 
         None
