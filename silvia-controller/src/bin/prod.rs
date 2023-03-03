@@ -22,10 +22,10 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
                 },
             }
             return Some(res);
-        } else if silvia.backflush_switch() {
+        } else if silvia.nextcancel_switch() {
             silvia.log("next/cancel switch");
             // Wait for the backflush switch to come up, then start.
-            while silvia.backflush_switch() {
+            while silvia.nextcancel_switch() {
                 spin_wait();
             }
             silvia.next_brew();
@@ -51,7 +51,7 @@ fn main() -> ! {
             },
             Some(Conclusion::Err(_)) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
-                while silvia.brew_switch() || silvia.backflush_switch() {
+                while silvia.brew_switch() || silvia.nextcancel_switch() {
                     spin_wait();
                 }
                 let _ = silvia.until_unless("standby", 2000, StopReason::None);

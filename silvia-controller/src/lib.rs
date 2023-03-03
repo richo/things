@@ -21,7 +21,7 @@ mod formatting;
 
 pub enum Switch {
     Brew,
-    BackFlush,
+    NextCancel,
 }
 
 use formatting::BoundDisplay;
@@ -51,12 +51,13 @@ pub trait Brew {
 }
 
 type Display = HD44780<FourBitBus<Pin<Output, PB4>, Pin<Output, PB3>, Pin<Output, PD6>, Pin<Output, PD5>, Pin<Output, PD4>, Pin<Output, PD3>>>;
+#[cfg(feature = "logging")]
 type Serial = arduino_hal::usart::Usart<USART0, Pin<Input, PD0>, Pin<Output, PD1>>;
 
 #[derive(Clone, Copy)]
 pub enum StopReason {
     Brew,
-    BackFlush,
+    Cancel,
     Either,
     None,
 }
@@ -70,7 +71,7 @@ pub struct Silvia {
     valve: Pin<Output, PB0>,
 
     brew: Pin<Input<PullUp>, PC4>,
-    backflush: Pin<Input<PullUp>, PC5>,
+    nextcancel: Pin<Input<PullUp>, PC5>,
 
     led: Pin<Output, PB5>,
 
@@ -108,7 +109,7 @@ impl Silvia {
         // Switches
 
         let brew =  pins.a4.into_pull_up_input();
-        let backflush =  pins.a5.into_pull_up_input();
+        let nextcancel =  pins.a5.into_pull_up_input();
 
         // relays
         let pump = pins.d9.into_output();
@@ -124,7 +125,7 @@ impl Silvia {
             pump,
             valve,
             brew,
-            backflush,
+            nextcancel,
             led,
 
             current,
@@ -178,8 +179,8 @@ impl Silvia {
         self.brew.is_low()
     }
 
-    pub fn backflush_switch(&mut self) -> bool {
-        self.backflush.is_low()
+    pub fn nextcancel_switch(&mut self) -> bool {
+        self.nextcancel.is_low()
     }
 
     pub fn led(&mut self) -> &mut Pin<Output, PB5> {
@@ -262,8 +263,8 @@ impl Silvia {
     fn unless(&mut self, reason: StopReason) -> bool {
         match reason {
             StopReason::Brew => self.brew.is_low(),
-            StopReason::BackFlush => self.backflush.is_low(),
-            StopReason::Either => self.brew.is_low() || self.backflush.is_low(),
+            StopReason::Cancel => self.nextcancel.is_low(),
+            StopReason::Either => self.brew.is_low() || self.nextcancel.is_low(),
             StopReason::None => false,
         }
     }

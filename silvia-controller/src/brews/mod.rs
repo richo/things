@@ -15,6 +15,7 @@ pub enum BrewContainer {
     Richo,
     PreInfuse,
     Straight,
+    BackFlush,
 }
 
 impl Default for BrewContainer {
@@ -33,6 +34,9 @@ impl BrewContainer {
                 BrewContainer::Straight
             },
             BrewContainer::Straight => {
+                BrewContainer::BackFlush
+            },
+            BrewContainer::BackFlush => {
                 BrewContainer::Richo
             },
         }
@@ -49,6 +53,9 @@ impl BrewContainer {
             BrewContainer::Straight => {
                 StraightBrew::NAME
             },
+            BrewContainer::BackFlush => {
+                BackFlush::NAME
+            },
         }
     }
 
@@ -62,6 +69,9 @@ impl BrewContainer {
             },
             BrewContainer::Straight => {
                 StraightBrew::brew(silvia)
+            },
+            BrewContainer::BackFlush => {
+                BackFlush::brew(silvia)
             },
         }
     }
