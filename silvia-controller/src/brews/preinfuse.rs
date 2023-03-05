@@ -11,19 +11,19 @@ impl Brew for PreInfuse {
     const NAME: &'static str = "preinfuse";
 
     fn brew(silvia: &mut Silvia) -> Conclusion {
-        silvia.valve.set_high();
-        silvia.pump.set_high();
+        silvia.valve_on();
+        silvia.pump_on();
 
         // Infuse the puck by closing the solenoid and running the pump
         silvia.until_unless("infuse", INFUSE_MILLIS, StopReason::Cancel)?;
 
-        silvia.valve.set_low();
-        silvia.pump.set_low();
+        silvia.valve_off();
+        silvia.pump_off();
 
         silvia.until_unless("wait", INFUSE_WAIT_MILLIS, StopReason::Cancel)?;
 
-        silvia.valve.set_high();
-        silvia.pump.set_high();
+        silvia.valve_on();
+        silvia.pump_on();
 
         silvia.until_unless("brew", BREW_MILLIS, StopReason::Brew)
     }

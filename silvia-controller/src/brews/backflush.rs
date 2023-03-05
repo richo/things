@@ -13,12 +13,12 @@ impl Brew for BackFlush {
 
     fn brew(silvia: &mut Silvia) -> Conclusion {
         for _ in 0..BACKFLUSH_REPEATS {
-            silvia.valve.set_high();
-            silvia.pump.set_high();
+            silvia.valve_on();
+            silvia.pump_on();
             silvia.until_unless("flush", BACKFLUSH_ON_MILLIS, StopReason::Cancel)?;
 
-            silvia.pump.set_low();
-            silvia.valve.set_low();
+            silvia.pump_off();
+            silvia.valve_off();
             silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, StopReason::Cancel)?;
         }
         Ok(())

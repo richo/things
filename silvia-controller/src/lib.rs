@@ -34,7 +34,7 @@ pub trait Brew {
         let res = Self::brew(silvia);
         // Confirm all the relays are closed.
         silvia.valve_off();
-        silvia.brew_off();
+        silvia.pump_off();
         res
     }
 
@@ -154,19 +154,19 @@ impl Silvia {
         let b = self.current_brew();
         let res = b.brew(self);
         // Turn off all the switches
-        self.brew_off();
+        self.pump_off();
         self.valve_off();
         res
     }
 
-    pub fn brew_on(&mut self) {
-        self.log("brew on");
+    pub fn pump_on(&mut self) {
+        self.log("pump on");
         #[cfg(not(feature = "disable-relays"))]
         self.pump.set_high()
     }
 
-    pub fn brew_off(&mut self) {
-        self.log("brew off");
+    pub fn pump_off(&mut self) {
+        self.log("pump off");
         #[cfg(not(feature = "disable-relays"))]
         self.pump.set_low()
     }

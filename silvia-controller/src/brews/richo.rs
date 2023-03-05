@@ -13,17 +13,17 @@ impl Brew for RichoBrew {
         // TODO(richo) I think this could be even better with opposing ramps, so shorter gaps and
         // longer runs until the it just brews.
         for t in [200, 300, 400] {
-            silvia.brew_on();
+            silvia.pump_on();
             silvia.until_unless("ramp-up", t, StopReason::Cancel)?;
 
-            silvia.brew_off();
+            silvia.pump_off();
             silvia.until_unless("ramp-up", 200, StopReason::Cancel)?;
         }
 
         // Run the main brew
         // Infuse leaves the valve closed, but we'll double check
         silvia.valve_on();
-        silvia.brew_on();
+        silvia.pump_on();
 
         // We'll run the pump for 35s or until someone stops us
         silvia.until_unless("brew", 35000, StopReason::Either)

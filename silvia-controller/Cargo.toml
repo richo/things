@@ -50,4 +50,4 @@ opt-level = "s"
 
 [features]
 logging = []
-disable-relays []
+disable-relays = []
