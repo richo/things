@@ -160,18 +160,26 @@ impl Silvia {
     }
 
     pub fn brew_on(&mut self) {
+        self.log("brew on");
+        #[cfg(not(feature = "disable-relays"))]
         self.pump.set_high()
     }
 
     pub fn brew_off(&mut self) {
+        self.log("brew off");
+        #[cfg(not(feature = "disable-relays"))]
         self.pump.set_low()
     }
 
     pub fn valve_on(&mut self) {
+        self.log("valve on");
+        #[cfg(not(feature = "disable-relays"))]
         self.valve.set_high()
     }
 
     pub fn valve_off(&mut self) {
+        self.log("valve off");
+        #[cfg(not(feature = "disable-relays"))]
         self.valve.set_low()
     }
 
