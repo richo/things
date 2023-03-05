@@ -146,6 +146,11 @@ impl Silvia {
         self.valve.set_low();
     }
 
+    pub fn reset_display(&mut self) {
+        self.lcd.reset(&mut self.delay);
+        self.reinit();
+    }
+
     #[cfg(feature = "logging")]
     pub fn serial(&mut self) -> &mut Serial {
         &mut self.serial
@@ -327,8 +332,8 @@ pub fn spin_wait() {
 }
 
 pub struct Operation {
-    name: Option<&'static str>,
-    time: u32,
+    pub name: Option<&'static str>,
+    pub time: u32,
 }
 
 pub trait OperationExt: Sized {
