@@ -1,4 +1,4 @@
-use crate::{Brew, Silvia, Conclusion, StopReason};
+use crate::{Brew, Silvia, Conclusion, StopReason, Count};
 
 /// A straight brew, this is basically the simplest possible profile. Pump turns on for 35s, then
 /// turns off.
@@ -12,6 +12,6 @@ impl Brew for StraightBrew {
         silvia.pump_on();
 
         // We'll run the pump for 35s or until someone stops us
-        silvia.until_unless("brew", 3500, StopReason::Cancel)
+        silvia.until_unless("brew", 3500, StopReason::Cancel, Count::Up)
     }
 }

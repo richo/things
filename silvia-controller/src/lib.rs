@@ -62,6 +62,12 @@ pub enum StopReason {
     None,
 }
 
+pub enum Count {
+    Up,
+    DownFrom(u32),
+    None,
+}
+
 pub struct Silvia {
     #[cfg(feature = "logging")]
     serial: Serial,
@@ -277,7 +283,7 @@ impl Silvia {
         }
     }
 
-    pub fn until_unless(&mut self, op: &'static str, millis: u16, stop: StopReason) -> Conclusion {
+    pub fn until_unless(&mut self, op: &'static str, millis: u16, stop: StopReason, count: Count) -> Conclusion {
         // TODO(richo) Show goal time in the lower right?
         discard(self.write_title(op));
         // self.write_goal(millis as u32);
@@ -292,7 +298,15 @@ impl Silvia {
                 }
                 return Conclusion::time(millis::millis() - start);
             }
-            discard(self.write_time(millis::millis() - start));
+            match count {
+                Count::Up => {
+                    discard(self.write_time(millis::millis() - start));
+                },
+                Count::DownFrom(t) => {
+                    discard(self.write_time(t - (millis::millis() - start)));
+                },
+                Count::None => {},
+            }
             arduino_hal::delay_ms(RESOLUTION);
         }
         Ok(())

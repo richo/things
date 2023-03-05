@@ -54,11 +54,11 @@ fn main() -> ! {
                 while silvia.brew_switch() || silvia.nextcancel_switch() {
                     spin_wait();
                 }
-                let _ = silvia.until_unless("standby", 2000, StopReason::None);
+                let _ = silvia.until_unless("standby", 1000, StopReason::None, Count::DownFrom(1000));
             }
             Some(Conclusion::Ok(())) => {
                 // We ran to conclusion, do nothing.
-                let _ = silvia.until_unless("standby", 2000, StopReason::None);
+                let _ = silvia.until_unless("standby", 1000, StopReason::None, Count::DownFrom(1000));
             }
         }
     }
