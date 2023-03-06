@@ -10,6 +10,9 @@ pub use preinfuse::PreInfuse;
 mod backflush;
 pub use backflush::BackFlush;
 
+mod repro;
+pub use repro::Repro;
+
 #[derive(Clone, Copy)]
 pub enum BrewContainer {
     Richo,
