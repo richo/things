@@ -1,6 +1,8 @@
 #![no_std]
 #![feature(abi_avr_interrupt)]
 
+use core::num::NonZeroU32;
+
 use panic_halt as _;
 pub use arduino_hal::prelude::*;
 // TODO(richo) pare these down once we're sure we have everything we need.
@@ -19,7 +21,6 @@ use hd44780_driver::{
 
 pub mod millis;
 pub mod brews;
-mod formatting;
 
 pub enum Switch {
     Brew,
@@ -31,6 +32,9 @@ pub enum Row {
     Second,
 }
 
+/// How long we pause to give buttons a chance to come up, or after user interactions.
+pub const BUTTON_DELAY: u16 = 300;
+
 impl Into<u8> for Row {
     fn into(self) -> u8 {
         match self {
@@ -39,8 +43,6 @@ impl Into<u8> for Row {
         }
     }
 }
-
-use formatting::BoundDisplay;
 
 pub trait Brew {
     const NAME: &'static str;
@@ -182,7 +184,7 @@ impl Silvia {
     }
 
     pub fn do_brew(&mut self) -> Conclusion {
-        let b = self.current_brew();
+        let b = self.current;
         let res = b.brew(self);
         // Turn off all the switches
         self.pump_off();
@@ -226,10 +228,6 @@ impl Silvia {
         &mut self.led
     }
 
-    pub fn current_brew(&self) -> brews::BrewContainer {
-        self.current
-    }
-
     pub fn next_brew(&mut self) -> Result<(), DisplayError> {
         self.current = self.current.next();
         // Clear the old shot timer
@@ -260,34 +258,19 @@ impl Silvia {
     }
 
     pub fn write_time(&mut self, time: u32) -> Result<(), DisplayError> {
-        self.write_formatted_time(time)
-    }
+        let mut buf = [0; 4];
+        let pos = 12;
+        format_time(&mut buf, time);
 
-    pub fn write_formatted_time(&mut self, time: u32) -> Result<(), DisplayError> {
-        let secs = time / 1000;
-        let tenths = (time % 1000) / 100;
-
-        let mut pos = 12;
-        if secs < 10 {
-            pos += 1
-        }
         self.lcd.set_cursor_pos(pos, &mut self.delay)?;
-        let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
-        ufmt::uwrite!(lcd, "{}.{}", secs, tenths)
+        self.lcd.write_bytes(&buf, &mut self.delay)
     }
 
+    /// Write a title to the top part of the screen, erasing any time that is currently displayed.
     pub fn write_title(&mut self, title: &str) -> Result<(), DisplayError> {
         self.lcd.set_cursor_pos(0, &mut self.delay)?;
         let bytes = pad_str(title, None);
         self.lcd.write_bytes(&bytes, &mut self.delay)
-    }
-
-    pub fn report(&mut self, op: Operation) -> Result<(), DisplayError> {
-        if let Some(msg) = op.name {
-            self.write_title(msg)?;
-        }
-
-        self.write_time(op.time)
     }
 
     pub fn display<'a>(&'a self) -> &'a Display {
@@ -326,7 +309,7 @@ impl Silvia {
                 while self.unless(stop) {
                     arduino_hal::delay_ms(RESOLUTION);
                 }
-                return Conclusion::time(millis::millis() - start);
+                return Conclusion::interrupted(millis::millis() - start);
             }
             match count {
                 Count::Up => {
@@ -356,16 +339,10 @@ pub fn spin_wait() {
     arduino_hal::delay_ms(100);
 }
 
-pub struct Operation {
-    pub name: Option<&'static str>,
-    pub time: u32,
-}
+pub type Operation = u32;
 
 pub trait OperationExt: Sized {
-    fn interrupted(name: &'static str, time: u32) -> Self;
-
-
-    fn time(time: u32) -> Self;
+    fn interrupted(time: u32) -> Self;
 
     fn finished(time: u32) -> Self;
 
@@ -373,55 +350,41 @@ pub trait OperationExt: Sized {
 }
 
 impl OperationExt for Result<Operation, Operation> {
-    fn interrupted(name: &'static str, time: u32) -> Self {
-        Err(Operation { name: Some(name), time})
-    }
-
-
-    fn time(time: u32) -> Self {
-        Err(Operation { name: None, time })
+    fn interrupted(time: u32) -> Self {
+        Err(time)
     }
 
     fn finished(time: u32) -> Self {
-        Ok(Operation { name: None, time })
+        Ok(time)
     }
 
     // This is jank for now, we'll probably make this clearer in the type system but for now 0 is a
     // magic value
     fn done() -> Self {
-        Ok(Operation { name: None, time: 0 })
+        Ok(0)
     }
 }
 
 
-/// Either Ok, or Err(millis the operation ran for)
+/// Represents how a logical operation ended.
+///
+/// Ok(time) represents the operation completing, either with Some(time) representing how long the
+/// operation took, or None for "complete" in a context where that time being meaningless.
+///
+/// Err(time) represents a user intervention.
 pub type Conclusion = Result<Operation, Operation>;
 
 // TODO(richo) pull this out and ditch ufmt entirely
 const RESOLUTION: u16 = 100;
 /// Pad a string out to 16 characters, in order to make it consume a full line
-fn pad_str(msg: &str, last: Option<u32>) -> [u8; 16] {
+/// If `time` is Some that time will be inserted on the right side, and in the specialcase that
+/// it's 0 the string 'done' will be used instead.
+fn pad_str(msg: &str, time: Option<u32>) -> [u8; 16] {
     let mut ary = [b' '; 16];
     ary[0..msg.len()].copy_from_slice(msg.as_bytes());
-    if let Some(t) = last {
+    if let Some(t) = time {
         if t > 0 {
-            let zero = b'0';
-            let secs = t / 1000;
-            let tenths = (t % 1000) / 100;
-            let mut idx = 16 - 4;
-
-            if secs > 10 {
-                ary[idx] = zero + (secs / 10) as u8;
-            }
-
-            idx += 1;
-            ary[idx] = zero + (secs % 10) as u8;
-
-            idx += 1;
-            ary[idx] = b'.';
-
-            idx += 1;
-            ary[idx] = zero + tenths as u8;
+            format_time(&mut ary[12..], t);
         } else {
             ary[12..].copy_from_slice(b"done");
         }
@@ -429,3 +392,17 @@ fn pad_str(msg: &str, last: Option<u32>) -> [u8; 16] {
     ary
 }
 
+fn format_time(buf: &mut [u8], time: u32) {
+    let zero = b'0';
+    let secs = time / 1000;
+    let tenths = (time % 1000) / 100;
+
+    buf[0] = b' ';
+    if secs > 10 {
+        buf[0] = zero + (secs / 10) as u8;
+    }
+
+    buf[1] = zero + (secs % 10) as u8;
+    buf[2] = b'.';
+    buf[3] = zero + tenths as u8;
+}

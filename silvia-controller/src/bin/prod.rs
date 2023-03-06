@@ -49,19 +49,16 @@ fn main() -> ! {
                 // Nothing happed, busywait and then continue
                 spin_wait();
             },
-            Some(Conclusion::Err(Operation { name, time })) => {
+            Some(Conclusion::Err(time)) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
-
-                // Don't display a time if the last thing ran to the end
-                silvia.last = None;
+                silvia.last = Some(time);
                 silvia.reset_display();
 
                 while silvia.brew_switch() || silvia.nextcancel_switch() {
                     spin_wait();
                 }
-                let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }
-            Some(Conclusion::Ok(Operation { name, time })) => {
+            Some(Conclusion::Ok(time)) => {
                 silvia.last = Some(time);
                 silvia.reset_display();
                 // We ran to conclusion, do nothing.
