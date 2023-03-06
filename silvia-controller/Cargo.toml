@@ -34,6 +34,9 @@ git = "https://github.com/rahix/avr-hal"
 rev = "4c9c44c314eb061ee20556ef10d45dea36e75ee4"
 features = ["arduino-nano"]
 
+[patch.crates-io]
+hd44780-driver = { path = '../../hd44780-driver' }
+
 # Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
 panic = "abort"

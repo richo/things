@@ -3,7 +3,6 @@
 
 use panic_halt as _;
 pub use arduino_hal::prelude::*;
-use arduino_hal::hal::pac::USART0;
 // TODO(richo) pare these down once we're sure we have everything we need.
 #[allow(unused_imports)]
 use arduino_hal::hal::port::{Pin, PB2, PB3, PB4, PD6, PD5, PD4, PD3, PC4, PC5, PD1, PD0, PB0, PB1, PB5};
@@ -140,15 +139,16 @@ impl Silvia {
         res
     }
 
-    pub fn reinit(&mut self) {
-        self.show_current_brew_name();
+    pub fn reinit(&mut self) -> Result<(), DisplayError> {
+        self.show_current_brew_name()?;
         self.pump.set_low();
         self.valve.set_low();
+        Ok(())
     }
 
-    pub fn reset_display(&mut self) {
-        self.lcd.reset(&mut self.delay);
-        self.reinit();
+    pub fn reset_display(&mut self) -> Result<(), DisplayError> {
+        self.lcd.init_4bit(&mut self.delay)?;
+        self.reinit()
     }
 
     #[cfg(feature = "logging")]
