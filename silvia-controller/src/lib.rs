@@ -370,6 +370,7 @@ impl OperationExt for Result<Operation, Operation> {
 /// Either Ok, or Err(millis the operation ran for)
 pub type Conclusion = Result<Operation, Operation>;
 
+// TODO(richo) pull this out and ditch ufmt entirely
 const RESOLUTION: u16 = 100;
 /// Pad a string out to 16 characters, in order to make it consume a full line
 fn pad_str(msg: &str, last: Option<u32>) -> [u8; 16] {
