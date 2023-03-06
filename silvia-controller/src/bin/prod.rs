@@ -14,7 +14,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
 
             let res = silvia.do_brew();
             match res {
-                Conclusion::Ok(()) => {
+                Conclusion::Ok(_) => {
                     silvia.log("brew finished");
                 },
                 Conclusion::Err(_) => {
@@ -37,10 +37,14 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
+    let mut last_time = None;
 
     loop {
         silvia.reinit();
         silvia.write_title("ready");
+        if let Some(t) = last_time {
+            silvia.write_goal(t);
+        }
         // Lock out the machine for a couple of seconds, so that pressing a button right as it
         // stops doesn't start a new one.
 
@@ -52,15 +56,16 @@ fn main() -> ! {
             Some(Conclusion::Err(Operation { name, time })) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
                 silvia.reset_display();
-                silvia.write_time(time);
+                last_time = Some(time);
 
                 while silvia.brew_switch() || silvia.nextcancel_switch() {
                     spin_wait();
                 }
                 let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }
-            Some(Conclusion::Ok(())) => {
+            Some(Conclusion::Ok(Operation { name, time })) => {
                 silvia.reset_display();
+                last_time = Some(time);
                 // We ran to conclusion, do nothing.
                 let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }

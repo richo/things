@@ -8,6 +8,9 @@ pub use arduino_hal::prelude::*;
 use arduino_hal::hal::port::{Pin, PB2, PB3, PB4, PD6, PD5, PD4, PD3, PC4, PC5, PD1, PD0, PB0, PB1, PB5};
 use arduino_hal::hal::port::mode::{Input, Output, PullUp};
 
+#[cfg(feature = "logging")]
+use arduino_hal::hal::pac::USART0;
+
 use hd44780_driver::{
     HD44780,
     bus::FourBitBus,
@@ -315,7 +318,7 @@ impl Silvia {
             }
             arduino_hal::delay_ms(RESOLUTION);
         }
-        Ok(())
+        Conclusion::finished(millis as u32)
     }
 
 }
@@ -342,9 +345,11 @@ pub trait OperationExt: Sized {
 
 
     fn time(time: u32) -> Self;
+
+    fn finished(time: u32) -> Self;
 }
 
-impl OperationExt for Result<(), Operation> {
+impl OperationExt for Result<Operation, Operation> {
     fn interrupted(name: &'static str, time: u32) -> Self {
         Err(Operation { name: Some(name), time})
     }
@@ -353,11 +358,15 @@ impl OperationExt for Result<(), Operation> {
     fn time(time: u32) -> Self {
         Err(Operation { name: None, time })
     }
+
+    fn finished(time: u32) -> Self {
+        Ok(Operation { name: None, time })
+    }
 }
 
 
 /// Either Ok, or Err(millis the operation ran for)
-pub type Conclusion = Result<(), Operation>;
+pub type Conclusion = Result<Operation, Operation>;
 
 const RESOLUTION: u16 = 100;
 /// Pad a string out to 16 characters, in order to make it consume a full line

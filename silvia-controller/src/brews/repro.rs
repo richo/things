@@ -1,12 +1,12 @@
-use crate::{Brew, Silvia, Conclusion, StopReason, Count};
+use crate::{Brew, Silvia, Conclusion, StopReason, Count, OperationExt};
 
 /// Attempt to trigger the screen issues on purpose for debugging
 pub struct Repro;
 
 /// Backflush the machine.
 const REPRO_REPEATS: u16 = 3;
-const REPRO_ON_MILLIS: u16 = 800;
-const REPRO_PAUSE_MILLIS: u16 = 3000;
+const REPRO_ON_MILLIS: u16 = 200;
+const REPRO_PAUSE_MILLIS: u16 = 300;
 
 impl Brew for Repro {
     const NAME: &'static str = "repro";
@@ -21,6 +21,6 @@ impl Brew for Repro {
             silvia.valve_off();
             silvia.until_unless("wait", REPRO_PAUSE_MILLIS, StopReason::Cancel, Count::DownFrom(REPRO_PAUSE_MILLIS as u32))?;
         }
-        Ok(())
+        Conclusion::finished(666)
     }
 }

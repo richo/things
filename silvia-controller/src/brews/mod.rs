@@ -69,7 +69,7 @@ impl BrewContainer {
         }
     }
 
-    pub fn brew(&self, silvia: &mut Silvia) -> Result<(), Operation> {
+    pub fn brew(&self, silvia: &mut Silvia) -> Result<Operation, Operation> {
         match self {
             BrewContainer::Richo => {
                 RichoBrew::brew(silvia)

@@ -1,4 +1,4 @@
-use crate::{Brew, Silvia, Conclusion, StopReason, Count};
+use crate::{Brew, Silvia, Conclusion, StopReason, Count, OperationExt};
 
 /// Backflush the machine
 pub struct BackFlush;
@@ -21,6 +21,6 @@ impl Brew for BackFlush {
             silvia.valve_off();
             silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_PAUSE_MILLIS as u32))?;
         }
-        Ok(())
+        Conclusion::finished(666)
     }
 }
