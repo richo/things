@@ -24,6 +24,6 @@ impl Brew for BackFlush {
             silvia.valve_off();
             silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_PAUSE_MILLIS as u32))?;
         }
-        Conclusion::finished(0)
+        Conclusion::done()
     }
 }

@@ -232,6 +232,8 @@ impl Silvia {
 
     pub fn next_brew(&mut self) -> Result<(), DisplayError> {
         self.current = self.current.next();
+        // Clear the old shot timer
+        self.last = None;
         self.show_current_brew_name()
     }
 
@@ -366,6 +368,8 @@ pub trait OperationExt: Sized {
     fn time(time: u32) -> Self;
 
     fn finished(time: u32) -> Self;
+
+    fn done() -> Self;
 }
 
 impl OperationExt for Result<Operation, Operation> {
@@ -381,6 +385,12 @@ impl OperationExt for Result<Operation, Operation> {
     fn finished(time: u32) -> Self {
         Ok(Operation { name: None, time })
     }
+
+    // This is jank for now, we'll probably make this clearer in the type system but for now 0 is a
+    // magic value
+    fn done() -> Self {
+        Ok(Operation { name: None, time: 0 })
+    }
 }
 
 
@@ -393,8 +403,8 @@ const RESOLUTION: u16 = 100;
 fn pad_str(msg: &str, last: Option<u32>) -> [u8; 16] {
     let mut ary = [b' '; 16];
     ary[0..msg.len()].copy_from_slice(msg.as_bytes());
-    match last {
-        Some(t) if t > 0 => {
+    if let Some(t) = last {
+        if t > 0 {
             let zero = b'0';
             let secs = t / 1000;
             let tenths = (t % 1000) / 100;
@@ -412,8 +422,9 @@ fn pad_str(msg: &str, last: Option<u32>) -> [u8; 16] {
 
             idx += 1;
             ary[idx] = zero + tenths as u8;
-        },
-        _ => {},
+        } else {
+            ary[12..].copy_from_slice(b"done");
+        }
     }
     ary
 }
