@@ -84,6 +84,7 @@ pub struct Silvia {
     led: Pin<Output, PB5>,
 
     current: brews::BrewContainer,
+    pub last: Option<u32>,
 }
 
 impl Silvia {
@@ -138,6 +139,7 @@ impl Silvia {
             led,
 
             current,
+            last: None,
         };
         res.reinit();
         res
@@ -223,8 +225,8 @@ impl Silvia {
         self.show_brew_name(self.current.name())
     }
 
-    pub fn show_brew_name(&mut self, name: &'static str) -> Result<(), DisplayError> {
-        let bytes = pad_str(name);
+    fn show_brew_name(&mut self, name: &'static str) -> Result<(), DisplayError> {
+        let bytes = pad_str(name, self.last);
         self.lcd.set_cursor_pos(40, &mut self.delay)?;
         self.lcd.write_bytes(&bytes, &mut self.delay)
     }
@@ -246,18 +248,18 @@ impl Silvia {
             pos += 1
         }
         if second {
-            pos += 40
+            pos += 40;
         }
 
         self.lcd.set_cursor_pos(pos, &mut self.delay)?;
         let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
-        ufmt::uwriteln!(lcd, "{}.{}", secs, tenths)
+        ufmt::uwrite!(lcd, "{}.{}", secs, tenths)
     }
 
     pub fn write_title(&mut self, title: &str) -> Result<(), DisplayError> {
         self.log(title);
         self.lcd.set_cursor_pos(0, &mut self.delay)?;
-        let bytes = pad_str(title);
+        let bytes = pad_str(title, None);
         self.lcd.write_bytes(&bytes, &mut self.delay)
     }
 
@@ -370,9 +372,28 @@ pub type Conclusion = Result<Operation, Operation>;
 
 const RESOLUTION: u16 = 100;
 /// Pad a string out to 16 characters, in order to make it consume a full line
-fn pad_str(msg: &str) -> [u8; 16] {
+fn pad_str(msg: &str, last: Option<u32>) -> [u8; 16] {
     let mut ary = [b' '; 16];
     ary[0..msg.len()].copy_from_slice(msg.as_bytes());
+    if let Some(t) = last {
+        let zero = b'0';
+        let secs = t / 1000;
+        let tenths = (t % 1000) / 100;
+        let mut idx = 16 - 4;
+
+        if secs > 10 {
+            ary[idx] = zero + (secs / 10) as u8;
+        }
+
+        idx += 1;
+        ary[idx] = zero + (secs % 10) as u8;
+
+        idx += 1;
+        ary[idx] = b'.';
+
+        idx += 1;
+        ary[idx] = zero + tenths as u8;
+    }
     ary
 }
 
