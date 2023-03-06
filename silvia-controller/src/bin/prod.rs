@@ -51,8 +51,8 @@ fn main() -> ! {
             },
             Some(Conclusion::Err(Operation { name, time })) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
-                silvia.reset_display();
                 silvia.last = Some(time);
+                silvia.reset_display();
 
                 while silvia.brew_switch() || silvia.nextcancel_switch() {
                     spin_wait();
@@ -60,8 +60,8 @@ fn main() -> ! {
                 let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }
             Some(Conclusion::Ok(Operation { name, time })) => {
-                silvia.reset_display();
                 silvia.last = Some(time);
+                silvia.reset_display();
                 // We ran to conclusion, do nothing.
                 let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }

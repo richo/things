@@ -257,7 +257,6 @@ impl Silvia {
     }
 
     pub fn write_title(&mut self, title: &str) -> Result<(), DisplayError> {
-        self.log(title);
         self.lcd.set_cursor_pos(0, &mut self.delay)?;
         let bytes = pad_str(title, None);
         self.lcd.write_bytes(&bytes, &mut self.delay)
