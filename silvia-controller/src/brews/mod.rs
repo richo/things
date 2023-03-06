@@ -10,12 +10,16 @@ pub use preinfuse::PreInfuse;
 mod backflush;
 pub use backflush::BackFlush;
 
+mod repro;
+pub use repro::Repro;
+
 #[derive(Clone, Copy)]
 pub enum BrewContainer {
     Richo,
     PreInfuse,
     Straight,
     BackFlush,
+    Repro,
 }
 
 impl Default for BrewContainer {
@@ -37,6 +41,9 @@ impl BrewContainer {
                 BrewContainer::BackFlush
             },
             BrewContainer::BackFlush => {
+                BrewContainer::Repro
+            },
+            BrewContainer::Repro => {
                 BrewContainer::Richo
             },
         }
@@ -56,6 +63,9 @@ impl BrewContainer {
             BrewContainer::BackFlush => {
                 BackFlush::NAME
             },
+            BrewContainer::Repro => {
+                Repro::NAME
+            }
         }
     }
 
@@ -72,6 +82,9 @@ impl BrewContainer {
             },
             BrewContainer::BackFlush => {
                 BackFlush::brew(silvia)
+            },
+            BrewContainer::Repro => {
+                Repro::brew(silvia)
             },
         }
     }
