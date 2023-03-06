@@ -91,6 +91,7 @@ impl Silvia {
         unsafe { avr_device::interrupt::enable() };
 
         let pins = arduino_hal::pins!(dp);
+        #[cfg(feature = "logging")]
         let serial = arduino_hal::default_serial!(dp, pins, 57600);
 
         // Display
@@ -210,9 +211,9 @@ impl Silvia {
         self.current
     }
 
-    pub fn next_brew(&mut self) {
+    pub fn next_brew(&mut self) -> Result<(), DisplayError> {
         self.current = self.current.next();
-        self.show_current_brew_name();
+        self.show_current_brew_name()
     }
 
     pub fn show_current_brew_name(&mut self) -> Result<(), DisplayError> {
