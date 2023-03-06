@@ -51,7 +51,9 @@ fn main() -> ! {
             },
             Some(Conclusion::Err(Operation { name, time })) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
-                silvia.last = Some(time);
+
+                // Don't display a time if the last thing ran to the end
+                silvia.last = None;
                 silvia.reset_display();
 
                 while silvia.brew_switch() || silvia.nextcancel_switch() {
