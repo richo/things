@@ -21,7 +21,7 @@ mod formatting;
 
 pub enum Switch {
     Brew,
-    BackFlush,
+    NextCancel,
 }
 
 use formatting::BoundDisplay;
@@ -34,7 +34,7 @@ pub trait Brew {
         let res = Self::brew(silvia);
         // Confirm all the relays are closed.
         silvia.valve_off();
-        silvia.brew_off();
+        silvia.pump_off();
         res
     }
 
@@ -51,13 +51,20 @@ pub trait Brew {
 }
 
 type Display = HD44780<FourBitBus<Pin<Output, PB4>, Pin<Output, PB3>, Pin<Output, PD6>, Pin<Output, PD5>, Pin<Output, PD4>, Pin<Output, PD3>>>;
+#[cfg(feature = "logging")]
 type Serial = arduino_hal::usart::Usart<USART0, Pin<Input, PD0>, Pin<Output, PD1>>;
 
 #[derive(Clone, Copy)]
 pub enum StopReason {
     Brew,
-    BackFlush,
+    Cancel,
     Either,
+    None,
+}
+
+pub enum Count {
+    Up,
+    DownFrom(u32),
     None,
 }
 
@@ -70,9 +77,11 @@ pub struct Silvia {
     valve: Pin<Output, PB0>,
 
     brew: Pin<Input<PullUp>, PC4>,
-    backflush: Pin<Input<PullUp>, PC5>,
+    nextcancel: Pin<Input<PullUp>, PC5>,
 
     led: Pin<Output, PB5>,
+
+    current: brews::BrewContainer,
 }
 
 impl Silvia {
@@ -83,6 +92,7 @@ impl Silvia {
         unsafe { avr_device::interrupt::enable() };
 
         let pins = arduino_hal::pins!(dp);
+        #[cfg(feature = "logging")]
         let serial = arduino_hal::default_serial!(dp, pins, 57600);
 
         // Display
@@ -106,11 +116,13 @@ impl Silvia {
         // Switches
 
         let brew =  pins.a4.into_pull_up_input();
-        let backflush =  pins.a5.into_pull_up_input();
+        let nextcancel =  pins.a5.into_pull_up_input();
 
         // relays
         let pump = pins.d9.into_output();
         let valve = pins.d8.into_output();
+
+        let current = brews::BrewContainer::default();
 
         let mut res = Silvia {
             #[cfg(feature = "logging")]
@@ -120,16 +132,24 @@ impl Silvia {
             pump,
             valve,
             brew,
-            backflush,
+            nextcancel,
             led,
+
+            current,
         };
         res.reinit();
         res
     }
 
     pub fn reinit(&mut self) {
+        self.show_current_brew_name();
         self.pump.set_low();
         self.valve.set_low();
+    }
+
+    pub fn reset_display(&mut self) {
+        self.lcd.reset(&mut self.delay);
+        self.reinit();
     }
 
     #[cfg(feature = "logging")]
@@ -142,27 +162,36 @@ impl Silvia {
         let _ = ufmt::uwriteln!(self.serial, "{}",  _msg);
     }
 
-    pub fn brew<B: Brew>(&mut self) -> Conclusion {
-        let res = B::brew(self);
+    pub fn do_brew(&mut self) -> Conclusion {
+        let b = self.current_brew();
+        let res = b.brew(self);
         // Turn off all the switches
-        self.brew_off();
+        self.pump_off();
         self.valve_off();
         res
     }
 
-    pub fn brew_on(&mut self) {
+    pub fn pump_on(&mut self) {
+        self.log("pump on");
+        #[cfg(not(feature = "disable-relays"))]
         self.pump.set_high()
     }
 
-    pub fn brew_off(&mut self) {
+    pub fn pump_off(&mut self) {
+        self.log("pump off");
+        #[cfg(not(feature = "disable-relays"))]
         self.pump.set_low()
     }
 
     pub fn valve_on(&mut self) {
+        self.log("valve on");
+        #[cfg(not(feature = "disable-relays"))]
         self.valve.set_high()
     }
 
     pub fn valve_off(&mut self) {
+        self.log("valve off");
+        #[cfg(not(feature = "disable-relays"))]
         self.valve.set_low()
     }
 
@@ -170,15 +199,28 @@ impl Silvia {
         self.brew.is_low()
     }
 
-    pub fn backflush_switch(&mut self) -> bool {
-        self.backflush.is_low()
+    pub fn nextcancel_switch(&mut self) -> bool {
+        self.nextcancel.is_low()
     }
 
     pub fn led(&mut self) -> &mut Pin<Output, PB5> {
         &mut self.led
     }
 
-    pub fn show_brew_name(&mut self, name: &str) -> Result<(), DisplayError> {
+    pub fn current_brew(&self) -> brews::BrewContainer {
+        self.current
+    }
+
+    pub fn next_brew(&mut self) -> Result<(), DisplayError> {
+        self.current = self.current.next();
+        self.show_current_brew_name()
+    }
+
+    pub fn show_current_brew_name(&mut self) -> Result<(), DisplayError> {
+        self.show_brew_name(self.current.name())
+    }
+
+    pub fn show_brew_name(&mut self, name: &'static str) -> Result<(), DisplayError> {
         let bytes = pad_str(name);
         self.lcd.set_cursor_pos(40, &mut self.delay)?;
         self.lcd.write_bytes(&bytes, &mut self.delay)
@@ -241,13 +283,13 @@ impl Silvia {
     fn unless(&mut self, reason: StopReason) -> bool {
         match reason {
             StopReason::Brew => self.brew.is_low(),
-            StopReason::BackFlush => self.backflush.is_low(),
-            StopReason::Either => self.brew.is_low() || self.backflush.is_low(),
+            StopReason::Cancel => self.nextcancel.is_low(),
+            StopReason::Either => self.brew.is_low() || self.nextcancel.is_low(),
             StopReason::None => false,
         }
     }
 
-    pub fn until_unless(&mut self, op: &'static str, millis: u16, stop: StopReason) -> Conclusion {
+    pub fn until_unless(&mut self, op: &'static str, millis: u16, stop: StopReason, count: Count) -> Conclusion {
         // TODO(richo) Show goal time in the lower right?
         discard(self.write_title(op));
         // self.write_goal(millis as u32);
@@ -262,7 +304,15 @@ impl Silvia {
                 }
                 return Conclusion::time(millis::millis() - start);
             }
-            discard(self.write_time(millis::millis() - start));
+            match count {
+                Count::Up => {
+                    discard(self.write_time(millis::millis() - start));
+                },
+                Count::DownFrom(t) => {
+                    discard(self.write_time(t - (millis::millis() - start)));
+                },
+                Count::None => {},
+            }
             arduino_hal::delay_ms(RESOLUTION);
         }
         Ok(())
@@ -283,8 +333,8 @@ pub fn spin_wait() {
 }
 
 pub struct Operation {
-    name: Option<&'static str>,
-    time: u32,
+    pub name: Option<&'static str>,
+    pub time: u32,
 }
 
 pub trait OperationExt: Sized {

@@ -3,8 +3,6 @@
 
 use silvia_controller::*;
 
-type ActiveBrew = brews::RichoBrew;
-
 fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
         if silvia.brew_switch() {
             silvia.log("brew switch");
@@ -14,7 +12,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             }
             silvia.log("-> brew");
 
-            let res = silvia.brew::<ActiveBrew>();
+            let res = silvia.do_brew();
             match res {
                 Conclusion::Ok(()) => {
                     silvia.log("brew finished");
@@ -24,27 +22,13 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
                 },
             }
             return Some(res);
-        } else if silvia.backflush_switch() {
-            silvia.log("backflush switch");
+        } else if silvia.nextcancel_switch() {
+            silvia.log("next/cancel switch");
             // Wait for the backflush switch to come up, then start.
-            while silvia.backflush_switch() {
+            while silvia.nextcancel_switch() {
                 spin_wait();
             }
-            // Specialcase backflushing and show that for a sec
-            silvia.show_brew_name(brews::BackFlush::NAME);
-
-            silvia.log("-> backflush");
-            let res = silvia.brew::<brews::BackFlush>();
-            match res {
-                Conclusion::Ok(()) => {
-                    silvia.log("backflush finished");
-                },
-                Conclusion::Err(_) => {
-                    silvia.log("Backflush interrupted");
-                },
-            }
-            silvia.show_brew_name(ActiveBrew::NAME);
-            return Some(res);
+            silvia.next_brew();
         }
 
         None
@@ -53,7 +37,6 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
-    silvia.show_brew_name(ActiveBrew::NAME);
 
     loop {
         silvia.reinit();
@@ -66,16 +49,20 @@ fn main() -> ! {
                 // Nothing happed, busywait and then continue
                 spin_wait();
             },
-            Some(Conclusion::Err(_)) => {
+            Some(Conclusion::Err(Operation { name, time })) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
-                while silvia.brew_switch() || silvia.backflush_switch() {
+                silvia.reset_display();
+                silvia.write_time(time);
+
+                while silvia.brew_switch() || silvia.nextcancel_switch() {
                     spin_wait();
                 }
-                let _ = silvia.until_unless("standby", 2000, StopReason::None);
+                let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }
             Some(Conclusion::Ok(())) => {
+                silvia.reset_display();
                 // We ran to conclusion, do nothing.
-                let _ = silvia.until_unless("standby", 2000, StopReason::None);
+                let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }
         }
     }
