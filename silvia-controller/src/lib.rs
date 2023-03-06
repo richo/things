@@ -26,6 +26,20 @@ pub enum Switch {
     NextCancel,
 }
 
+pub enum Row {
+    First,
+    Second,
+}
+
+impl Into<u8> for Row {
+    fn into(self) -> u8 {
+        match self {
+            Row::First => 0,
+            Row::Second => 40
+        }
+    }
+}
+
 use formatting::BoundDisplay;
 
 pub trait Brew {
@@ -221,25 +235,33 @@ impl Silvia {
         self.show_current_brew_name()
     }
 
+    /// 4 characters worth of extra "scratch space"
+    /// This will be overwritten by the elapsed time when the brew ends
+    pub fn write_extra(&mut self, extra: &[u8; 4]) -> Result<(), DisplayError> {
+        let mut bytes = pad_str(self.current.name(), None);
+        bytes[12..].copy_from_slice(extra);
+        self.write_buf(&bytes, Row::Second)
+    }
+
     pub fn show_current_brew_name(&mut self) -> Result<(), DisplayError> {
         self.show_brew_name(self.current.name())
     }
 
     fn show_brew_name(&mut self, name: &'static str) -> Result<(), DisplayError> {
         let bytes = pad_str(name, self.last);
-        self.lcd.set_cursor_pos(40, &mut self.delay)?;
-        self.lcd.write_bytes(&bytes, &mut self.delay)
+        self.write_buf(&bytes, Row::Second)
     }
 
-    pub fn write_goal(&mut self, time: u32) -> Result<(), DisplayError> {
-        self.write_formatted_time(time, true)
+    fn write_buf(&mut self, buf: &[u8; 16], row: Row) -> Result<(), DisplayError> {
+        self.lcd.set_cursor_pos(row.into(), &mut self.delay)?;
+        self.lcd.write_bytes(buf, &mut self.delay)
     }
 
     pub fn write_time(&mut self, time: u32) -> Result<(), DisplayError> {
-        self.write_formatted_time(time, false)
+        self.write_formatted_time(time)
     }
 
-    pub fn write_formatted_time(&mut self, time: u32, second: bool) -> Result<(), DisplayError> {
+    pub fn write_formatted_time(&mut self, time: u32) -> Result<(), DisplayError> {
         let secs = time / 1000;
         let tenths = (time % 1000) / 100;
 
@@ -247,10 +269,6 @@ impl Silvia {
         if secs < 10 {
             pos += 1
         }
-        if second {
-            pos += 40;
-        }
-
         self.lcd.set_cursor_pos(pos, &mut self.delay)?;
         let mut lcd = BoundDisplay { display: &mut self.lcd, delay: &mut self.delay };
         ufmt::uwrite!(lcd, "{}.{}", secs, tenths)
@@ -375,24 +393,27 @@ const RESOLUTION: u16 = 100;
 fn pad_str(msg: &str, last: Option<u32>) -> [u8; 16] {
     let mut ary = [b' '; 16];
     ary[0..msg.len()].copy_from_slice(msg.as_bytes());
-    if let Some(t) = last {
-        let zero = b'0';
-        let secs = t / 1000;
-        let tenths = (t % 1000) / 100;
-        let mut idx = 16 - 4;
+    match last {
+        Some(t) if t > 0 => {
+            let zero = b'0';
+            let secs = t / 1000;
+            let tenths = (t % 1000) / 100;
+            let mut idx = 16 - 4;
 
-        if secs > 10 {
-            ary[idx] = zero + (secs / 10) as u8;
-        }
+            if secs > 10 {
+                ary[idx] = zero + (secs / 10) as u8;
+            }
 
-        idx += 1;
-        ary[idx] = zero + (secs % 10) as u8;
+            idx += 1;
+            ary[idx] = zero + (secs % 10) as u8;
 
-        idx += 1;
-        ary[idx] = b'.';
+            idx += 1;
+            ary[idx] = b'.';
 
-        idx += 1;
-        ary[idx] = zero + tenths as u8;
+            idx += 1;
+            ary[idx] = zero + tenths as u8;
+        },
+        _ => {},
     }
     ary
 }

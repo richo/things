@@ -12,7 +12,10 @@ impl Brew for BackFlush {
     const NAME: &'static str = "backflush";
 
     fn brew(silvia: &mut Silvia) -> Conclusion {
+        let mut extra = [b' ', b'0', b'/', b'0' + BACKFLUSH_REPEATS as u8];
         for _ in 0..BACKFLUSH_REPEATS {
+            extra[1] += 1;
+            silvia.write_extra(&extra);
             silvia.valve_on();
             silvia.pump_on();
             silvia.until_unless("flush", BACKFLUSH_ON_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_ON_MILLIS as u32))?;
@@ -21,6 +24,6 @@ impl Brew for BackFlush {
             silvia.valve_off();
             silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_PAUSE_MILLIS as u32))?;
         }
-        Conclusion::finished(666)
+        Conclusion::finished(0)
     }
 }
