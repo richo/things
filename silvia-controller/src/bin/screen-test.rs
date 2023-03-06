@@ -14,7 +14,7 @@ fn main() -> ! {
     // }
 
     silvia.last = Some(6666);
-    silvia.next_brew();
+    discard(silvia.next_brew());
 
     silvia.delay_ms(5000);
 
@@ -22,7 +22,7 @@ fn main() -> ! {
 
     loop {
         let time = millis::millis();
-        silvia.write_time(time);
+        discard(silvia.write_time(time));
         spin_wait();
     }
 }

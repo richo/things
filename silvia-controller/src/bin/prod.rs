@@ -28,7 +28,7 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
             while silvia.nextcancel_switch() {
                 spin_wait();
             }
-            silvia.next_brew();
+            discard(silvia.next_brew());
         }
 
         None
@@ -39,8 +39,8 @@ fn main() -> ! {
     let mut silvia = Silvia::new();
 
     loop {
-        silvia.reinit();
-        silvia.write_title("ready");
+        discard(silvia.reinit());
+        discard(silvia.write_title("ready"));
         // Lock out the machine for a couple of seconds, so that pressing a button right as it
         // stops doesn't start a new one.
 
@@ -52,7 +52,7 @@ fn main() -> ! {
             Some(Conclusion::Err(time)) => {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
                 silvia.last = Some(time);
-                silvia.reset_display();
+                discard(silvia.reset_display());
 
                 while silvia.brew_switch() || silvia.nextcancel_switch() {
                     spin_wait();
@@ -60,7 +60,7 @@ fn main() -> ! {
             }
             Some(Conclusion::Ok(time)) => {
                 silvia.last = Some(time);
-                silvia.reset_display();
+                discard(silvia.reset_display());
                 // We ran to conclusion, do nothing.
                 let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
             }

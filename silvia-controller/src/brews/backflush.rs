@@ -1,4 +1,4 @@
-use crate::{Brew, Silvia, Conclusion, StopReason, Count, OperationExt};
+use crate::{Brew, Silvia, Conclusion, StopReason, Count, OperationExt, discard};
 
 /// Backflush the machine
 pub struct BackFlush;
@@ -15,7 +15,7 @@ impl Brew for BackFlush {
         let mut extra = [b' ', b'0', b'/', b'0' + BACKFLUSH_REPEATS as u8];
         for _ in 0..BACKFLUSH_REPEATS {
             extra[1] += 1;
-            silvia.write_extra(&extra);
+            discard(silvia.write_extra(&extra));
             silvia.valve_on();
             silvia.pump_on();
             silvia.until_unless("flush", BACKFLUSH_ON_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_ON_MILLIS as u32))?;

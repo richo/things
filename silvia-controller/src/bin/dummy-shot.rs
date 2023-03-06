@@ -9,17 +9,17 @@ fn main() -> ! {
     let mut silvia = Silvia::new();
 
     loop {
-        silvia.reinit();
-        silvia.write_title("ready");
+        discard(silvia.reinit());
+        discard(silvia.write_title("ready"));
 
         silvia.delay_ms(2000);
-        silvia.next_brew();
+        discard(silvia.next_brew());
         silvia.delay_ms(2000);
 
 
 
         silvia.delay_ms(2000);
-        silvia.do_brew();
+        let _ = silvia.do_brew();
         silvia.delay_ms(2000);
     }
 }

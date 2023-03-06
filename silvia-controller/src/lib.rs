@@ -1,8 +1,6 @@
 #![no_std]
 #![feature(abi_avr_interrupt)]
 
-use core::num::NonZeroU32;
-
 use panic_halt as _;
 pub use arduino_hal::prelude::*;
 // TODO(richo) pare these down once we're sure we have everything we need.
@@ -157,7 +155,7 @@ impl Silvia {
             current,
             last: None,
         };
-        res.reinit();
+        discard(res.reinit());
         res
     }
 
@@ -326,7 +324,7 @@ impl Silvia {
 /// Discard a Result. This is for the various Display related functions that we don't want to block
 /// on. TODO(richo) I think the display being write only means these are functionally infallible
 /// anyway.
-fn discard(_: Result<(), DisplayError>) {
+pub fn discard(_: Result<(), DisplayError>) {
 }
 
 
