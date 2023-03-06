@@ -21,7 +21,7 @@ fn main() -> ! {
 
 
     loop {
-        let time = silvia.millis();
+        let time = millis::millis();
         silvia.write_time(time);
         spin_wait();
     }

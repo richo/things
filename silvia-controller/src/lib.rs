@@ -228,6 +228,7 @@ impl Silvia {
         &mut self.led
     }
 
+    /// Move to the next brew, erasing the currently displayed time or extra.
     pub fn next_brew(&mut self) -> Result<(), DisplayError> {
         self.current = self.current.next();
         // Clear the old shot timer
@@ -243,20 +244,20 @@ impl Silvia {
         self.write_buf(&bytes, Row::Second)
     }
 
+    /// Write the current brew name to screen, including any extra or time.
     pub fn show_current_brew_name(&mut self) -> Result<(), DisplayError> {
-        self.show_brew_name(self.current.name())
-    }
-
-    fn show_brew_name(&mut self, name: &'static str) -> Result<(), DisplayError> {
-        let bytes = pad_str(name, self.last);
+        let bytes = pad_str(self.current.name(), self.last);
         self.write_buf(&bytes, Row::Second)
     }
 
+    /// Write the contents of `buf` to the display, on the selected Row.
     fn write_buf(&mut self, buf: &[u8; 16], row: Row) -> Result<(), DisplayError> {
         self.lcd.set_cursor_pos(row.into(), &mut self.delay)?;
         self.lcd.write_bytes(buf, &mut self.delay)
     }
 
+    /// Write a time into the upper right hand corner, this is the active counter and is where a
+    /// user expects to see the time of the current operation.
     pub fn write_time(&mut self, time: u32) -> Result<(), DisplayError> {
         let mut buf = [0; 4];
         let pos = 12;
@@ -277,10 +278,6 @@ impl Silvia {
         &self.lcd
     }
 
-    pub fn millis(&mut self) -> u32 {
-        millis::millis()
-    }
-
     #[inline(always)]
     pub fn delay_ms(&self, time: u16) {
         arduino_hal::delay_ms(time)
@@ -297,9 +294,7 @@ impl Silvia {
     }
 
     pub fn until_unless(&mut self, op: &'static str, millis: u16, stop: StopReason, count: Count) -> Conclusion {
-        // TODO(richo) Show goal time in the lower right?
         discard(self.write_title(op));
-        // self.write_goal(millis as u32);
 
         let start = millis::millis();
         let target = start + millis as u32;
