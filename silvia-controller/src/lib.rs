@@ -30,7 +30,7 @@ pub enum Row {
     Second,
 }
 
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("FRANKENVERSION");
 pub const GIT_REV: &str = env!("GIT_HASH");
 
 /// How long we pause to give buttons a chance to come up, or after user interactions.
@@ -265,7 +265,7 @@ impl Silvia {
 
     /// Show a nice welcome message :)
     pub fn show_welcome(&mut self) -> Result<(), DisplayError> {
-        let bytes = pad_str("frankensilvia", None);
+        let bytes = pad_str(VERSION, None);
         self.write_buf(&bytes, Row::First)
     }
 
