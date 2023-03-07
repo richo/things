@@ -30,6 +30,9 @@ pub enum Row {
     Second,
 }
 
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const GIT_REV: &str = env!("GIT_HASH");
+
 /// How long we pause to give buttons a chance to come up, or after user interactions.
 pub const BUTTON_DELAY: u16 = 300;
 
@@ -155,8 +158,14 @@ impl Silvia {
             current,
             last: None,
         };
-        discard(res.reinit());
+        discard(res.init());
         res
+    }
+
+    pub fn init(&mut self) -> Result<(), DisplayError> {
+        self.pump.set_low();
+        self.valve.set_low();
+        Ok(())
     }
 
     pub fn reinit(&mut self) -> Result<(), DisplayError> {
@@ -246,6 +255,18 @@ impl Silvia {
     pub fn show_current_brew_name(&mut self) -> Result<(), DisplayError> {
         let bytes = pad_str(self.current.name(), self.last);
         self.write_buf(&bytes, Row::Second)
+    }
+
+    /// Show the current git hash
+    pub fn show_current_git_hash(&mut self) -> Result<(), DisplayError> {
+        let bytes = pad_str(GIT_REV, None);
+        self.write_buf(&bytes, Row::Second)
+    }
+
+    /// Show a nice welcome message :)
+    pub fn show_welcome(&mut self) -> Result<(), DisplayError> {
+        let bytes = pad_str("frankensilvia", None);
+        self.write_buf(&bytes, Row::First)
     }
 
     /// Write the contents of `buf` to the display, on the selected Row.

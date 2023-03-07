@@ -39,6 +39,13 @@ const RESET_INTERVAL: u32 = 5000;
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
+    // Show the welcome screen for a second.
+    discard(silvia.show_welcome());
+    silvia.delay_ms(800);
+
+    //TODO(richo) do something clever to show version if released.
+    discard(silvia.show_current_git_hash());
+    silvia.delay_ms(3000);
 
     let mut last_reset = millis::millis();
     loop {
