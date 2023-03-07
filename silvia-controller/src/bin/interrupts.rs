@@ -68,8 +68,6 @@ fn main() -> ! {
         core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
     }
 
-    dp.EXINT.pcicr.write(|w| unsafe { w.bits(0b010) });
-    dp.EXINT.pcmsk1.write(|w| unsafe {  w.bits(0b110000) });
 
     unsafe { avr_device::interrupt::enable() };
 

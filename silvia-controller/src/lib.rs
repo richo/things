@@ -19,6 +19,7 @@ use hd44780_driver::{
 
 pub mod millis;
 pub mod brews;
+pub mod switches;
 
 pub enum Switch {
     Brew,
@@ -92,9 +93,6 @@ pub struct Silvia {
     pump: Pin<Output, PB1>,
     valve: Pin<Output, PB0>,
 
-    brew: Pin<Input<PullUp>, PC4>,
-    nextcancel: Pin<Input<PullUp>, PC5>,
-
     led: Pin<Output, PB5>,
 
     current: brews::BrewContainer,
@@ -104,11 +102,22 @@ pub struct Silvia {
 impl Silvia {
     pub fn new() -> Self {
         let dp = arduino_hal::Peripherals::take().unwrap();
-
-        millis::millis_init(dp.TC0);
-        unsafe { avr_device::interrupt::enable() };
-
         let pins = arduino_hal::pins!(dp);
+
+        unsafe {
+            // SAFETY: Interrupts are not yet enabled, so we can safely: Move the pins required for
+            // the switches into a global only used by the interrupt, and then actually configure
+            // the interrupts.
+            let brew =  pins.a4.into_pull_up_input();
+            let nextcancel =  pins.a5.into_pull_up_input();
+            switches::init(dp.EXINT, brew, nextcancel);
+
+            // Configure the interrupts for our timers:
+            millis::init(dp.TC0);
+
+        avr_device::interrupt::enable()
+        };
+
         #[cfg(feature = "logging")]
         let serial = arduino_hal::default_serial!(dp, pins, 57600);
 
@@ -130,10 +139,6 @@ impl Silvia {
         // Led
         let led = pins.d13.into_output();
 
-        // Switches
-
-        let brew =  pins.a4.into_pull_up_input();
-        let nextcancel =  pins.a5.into_pull_up_input();
 
         // relays
         let pump = pins.d9.into_output();
@@ -148,8 +153,6 @@ impl Silvia {
             delay,
             pump,
             valve,
-            brew,
-            nextcancel,
             led,
 
             current,
@@ -214,14 +217,6 @@ impl Silvia {
         self.valve.set_low()
     }
 
-    pub fn brew_switch(&mut self) -> bool {
-        self.brew.is_low()
-    }
-
-    pub fn nextcancel_switch(&mut self) -> bool {
-        self.nextcancel.is_low()
-    }
-
     pub fn led(&mut self) -> &mut Pin<Output, PB5> {
         &mut self.led
     }
@@ -281,12 +276,11 @@ impl Silvia {
         arduino_hal::delay_ms(time)
     }
 
-    // TODO(richo) This is a hack but for now either button can cancel
     fn unless(&mut self, reason: StopReason) -> bool {
         match reason {
-            StopReason::Brew => self.brew.is_low(),
-            StopReason::Cancel => self.nextcancel.is_low(),
-            StopReason::Either => self.brew.is_low() || self.nextcancel.is_low(),
+            StopReason::Brew => switches::brew(),
+            StopReason::Cancel => switches::nextcancel(),
+            StopReason::Either => switches::brew() || switches::nextcancel(),
             StopReason::None => false,
         }
     }
