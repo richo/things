@@ -34,11 +34,20 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
         None
 }
 
+const RESET_INTERVAL: u32 = 5000;
+
 #[arduino_hal::entry]
 fn main() -> ! {
     let mut silvia = Silvia::new();
 
+    let mut last_reset = millis::millis();
     loop {
+        // Reset the display every 5s since it's glitchy
+        let now = millis::millis();
+        if now - last_reset > RESET_INTERVAL {
+            last_reset = now;
+            discard(silvia.reset_display());
+        }
         discard(silvia.reinit());
         discard(silvia.write_title("ready"));
         // Lock out the machine for a couple of seconds, so that pressing a button right as it
