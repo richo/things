@@ -1,5 +1,6 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::mem;
+use crate::millis;
 
 static BREW: AtomicBool = AtomicBool::new(false);
 static NEXTCANCEL: AtomicBool = AtomicBool::new(false);
@@ -17,20 +18,26 @@ pub type Butts = Option<AtomicBool>;
 struct InterruptState {
     brew: BrewSwitch,
     nextcancel: NextCancelSwitch,
+    next: u32,
 }
 
+const SWITCH_WAIT: u32 = 50;
 static mut INTERRUPT_STATE: mem::MaybeUninit<InterruptState> = mem::MaybeUninit::uninit();
-
 
 #[avr_device::interrupt(atmega328p)]
 #[allow(non_snake_case)]
 fn PCINT1() {
-    let state = unsafe {
+    let mut state = unsafe {
         // SAFETY: We _know_ that interrupts will only be enabled after the INTERRUPT_STATE is
         // initialized in our init function, so this ISR will never run when INTERRUPT_STATE is
         // uninitialized.
         &mut *INTERRUPT_STATE.as_mut_ptr()
     };
+    let now = millis::millis();
+    if now < state.next {
+        return;
+    }
+    state.next = now + SWITCH_WAIT;
 
     if state.brew.is_low() {
         BREW.store(true, Ordering::Relaxed);
@@ -46,6 +53,7 @@ pub unsafe fn init(EXINT: EXINT, brew: BrewSwitch, nextcancel: NextCancelSwitch)
     INTERRUPT_STATE = mem::MaybeUninit::new(InterruptState {
         brew,
         nextcancel,
+        next: 0,
     });
 
     EXINT.pcicr.write(|w| unsafe { w.bits(0b010) });
