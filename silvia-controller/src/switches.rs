@@ -5,11 +5,14 @@ static BREW: AtomicBool = AtomicBool::new(false);
 static NEXTCANCEL: AtomicBool = AtomicBool::new(false);
 
 use arduino_hal::hal::port::mode::{Input, PullUp};
-use arduino_hal::hal::port::{Pin, PB2, PB3, PB4, PD6, PD5, PD4, PD3, PC4, PC5, PD1, PD0, PB0, PB1, PB5};
+use arduino_hal::hal::port::{Pin, PC4, PC5};
 use avr_device::atmega328p::EXINT;
 
-pub type BrewSwitch = Pin<Input<PullUp>, PC4>;
-pub type NextCancelSwitch = Pin<Input<PullUp>, PC5>;
+type BrewSwitch = Pin<Input<PullUp>, PC4>;
+type NextCancelSwitch = Pin<Input<PullUp>, PC5>;
+
+pub type Butts = Option<AtomicBool>;
+
 
 struct InterruptState {
     brew: BrewSwitch,
@@ -38,6 +41,7 @@ fn PCINT1() {
 }
 
 /// SAFETY: This function can only be called with interrupts disabled.
+#[allow(non_snake_case)]
 pub unsafe fn init(EXINT: EXINT, brew: BrewSwitch, nextcancel: NextCancelSwitch) {
     INTERRUPT_STATE = mem::MaybeUninit::new(InterruptState {
         brew,
@@ -53,7 +57,7 @@ pub unsafe fn init(EXINT: EXINT, brew: BrewSwitch, nextcancel: NextCancelSwitch)
 /// This function resets the internal state, so checking twice in a row will return true at most
 /// once for the first press.
 pub fn brew() -> bool {
-    avr_device::interrupt::free(|cs| {
+    avr_device::interrupt::free(|_cs| {
         let res = BREW.load(Ordering::Relaxed);
         BREW.store(false, Ordering::Relaxed);
         res
@@ -65,7 +69,7 @@ pub fn brew() -> bool {
 /// This function resets the internal state, so checking twice in a row will return true at most
 /// once for the first press.
 pub fn nextcancel() -> bool {
-    avr_device::interrupt::free(|cs| {
+    avr_device::interrupt::free(|_cs| {
         let res = NEXTCANCEL.load(Ordering::Relaxed);
         NEXTCANCEL.store(false, Ordering::Relaxed);
         res

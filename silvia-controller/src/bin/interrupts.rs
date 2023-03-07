@@ -8,16 +8,14 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use core::mem;
 
 
-use arduino_hal::hal::port::mode::{Input, Output, PullUp};
-use arduino_hal::hal::port::{Pin, PB2, PB3, PB4, PD6, PD5, PD4, PD3, PC4, PC5, PD1, PD0, PB0, PB1, PB5};
-use arduino_hal::hal::pac::USART0;
-type Serial = arduino_hal::usart::Usart<USART0, Pin<Input, PD0>, Pin<Output, PD1>>;
+use arduino_hal::hal::port::mode::{Input, PullUp};
+use arduino_hal::hal::port::{Pin};
 
 static BREW: AtomicBool = AtomicBool::new(false);
 static NEXTCANCEL: AtomicBool = AtomicBool::new(false);
 
 fn brew() -> bool {
-    avr_device::interrupt::free(|cs| {
+    avr_device::interrupt::free(|_cs| {
         let res = BREW.load(Ordering::Relaxed);
         BREW.store(false, Ordering::Relaxed);
         res
@@ -55,7 +53,6 @@ fn main() -> ! {
     let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
     let a4 = pins.a4.into_pull_up_input();
     let a5 = pins.a5.into_pull_up_input();
-    let d13 = pins.d13.into_output();
 
     unsafe {
         // SAFETY: Interrupts are not enabled at this point so we can safely write the global

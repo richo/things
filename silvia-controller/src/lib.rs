@@ -3,10 +3,9 @@
 
 use panic_halt as _;
 pub use arduino_hal::prelude::*;
-// TODO(richo) pare these down once we're sure we have everything we need.
 #[allow(unused_imports)]
 use arduino_hal::hal::port::{Pin, PB2, PB3, PB4, PD6, PD5, PD4, PD3, PC4, PC5, PD1, PD0, PB0, PB1, PB5};
-use arduino_hal::hal::port::mode::{Input, Output, PullUp};
+use arduino_hal::hal::port::mode::Output;
 
 #[cfg(feature = "logging")]
 use arduino_hal::hal::pac::USART0;
@@ -138,7 +137,6 @@ impl Silvia {
 
         // Led
         let led = pins.d13.into_output();
-
 
         // relays
         let pump = pins.d9.into_output();
