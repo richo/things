@@ -8,13 +8,15 @@ fn main() {
             false => {"-?"},
     };
 
-    let output = Command::new("git").args(&["rev-parse", "HEAD"]).output().unwrap();
+    let output = Command::new("git").args(&["rev-parse", "--short", "HEAD"]).output().unwrap();
     let git_hash = String::from_utf8(output.stdout).unwrap();
+    let full_hash = format!("{}{}", git_hash.strip_suffix("\n").unwrap(), status);
 
-    println!("cargo:rustc-env=GIT_HASH={}{}", &git_hash[..9], status);
+    assert!(full_hash.len() <= 16, "{}", full_hash);
+    println!("cargo:rustc-env=GIT_HASH={}", full_hash);
+
     let version = format!("frnknslv-{}", env!("CARGO_PKG_VERSION"));
     assert!(version.len() <= 16, "{}", version);
-
     println!("cargo:rustc-env=FRANKENVERSION={}", version);
 
 }
