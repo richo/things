@@ -4,12 +4,8 @@
 use silvia_controller::*;
 
 fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
-        if silvia.brew_switch() {
+        if silvia.brew.poll() {
             silvia.log("brew switch");
-            // Wait for the switch to come up
-            while silvia.brew_switch() {
-                spin_wait();
-            }
             silvia.log("-> brew");
 
             let res = silvia.do_brew();
@@ -22,12 +18,8 @@ fn mainloop(silvia: &mut Silvia) -> Option<Conclusion> {
                 },
             }
             return Some(res);
-        } else if silvia.nextcancel_switch() {
+        } else if silvia.nextcancel.poll() {
             silvia.log("next/cancel switch");
-            // Wait for the backflush switch to come up, then start.
-            while silvia.nextcancel_switch() {
-                spin_wait();
-            }
             discard(silvia.next_brew());
         }
 
@@ -69,10 +61,6 @@ fn main() -> ! {
                 // Someone pushed a button, wait for no buttons to be pressed and then continue
                 silvia.last = Some(time);
                 discard(silvia.reset_display());
-
-                while silvia.brew_switch() || silvia.nextcancel_switch() {
-                    spin_wait();
-                }
             }
             Some(Conclusion::Ok(time)) => {
                 silvia.last = Some(time);

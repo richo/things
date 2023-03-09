@@ -19,6 +19,8 @@ use hd44780_driver::{
 
 pub mod millis;
 pub mod brews;
+pub mod debounced;
+
 
 pub enum Switch {
     Brew,
@@ -95,8 +97,8 @@ pub struct Silvia {
     pump: Pin<Output, PB1>,
     valve: Pin<Output, PB0>,
 
-    brew: Pin<Input<PullUp>, PC4>,
-    nextcancel: Pin<Input<PullUp>, PC5>,
+    pub brew: debounced::DebouncedButton<Pin<Input<PullUp>, PC4>>,
+    pub nextcancel: debounced::DebouncedButton<Pin<Input<PullUp>, PC5>>,
 
     led: Pin<Output, PB5>,
 
@@ -135,8 +137,8 @@ impl Silvia {
 
         // Switches
 
-        let brew =  pins.a4.into_pull_up_input();
-        let nextcancel =  pins.a5.into_pull_up_input();
+        let brew =  debounced::DebouncedButton::new(pins.a4.into_pull_up_input());
+        let nextcancel =  debounced::DebouncedButton::new(pins.a5.into_pull_up_input());
 
         // relays
         let pump = pins.d9.into_output();
@@ -223,14 +225,6 @@ impl Silvia {
         self.valve.set_low()
     }
 
-    pub fn brew_switch(&mut self) -> bool {
-        self.brew.is_low()
-    }
-
-    pub fn nextcancel_switch(&mut self) -> bool {
-        self.nextcancel.is_low()
-    }
-
     pub fn led(&mut self) -> &mut Pin<Output, PB5> {
         &mut self.led
     }
@@ -305,9 +299,9 @@ impl Silvia {
     // TODO(richo) This is a hack but for now either button can cancel
     fn unless(&mut self, reason: StopReason) -> bool {
         match reason {
-            StopReason::Brew => self.brew.is_low(),
-            StopReason::Cancel => self.nextcancel.is_low(),
-            StopReason::Either => self.brew.is_low() || self.nextcancel.is_low(),
+            StopReason::Brew => self.brew.poll(),
+            StopReason::Cancel => self.nextcancel.poll(),
+            StopReason::Either => self.brew.poll() || self.nextcancel.poll(),
             StopReason::None => false,
         }
     }
