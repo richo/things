@@ -31,6 +31,6 @@ impl Brew for RichoBrew {
         silvia.pump_on();
 
         // We'll run the pump for 35s or until someone stops us
-        silvia.until_unless("brew", 35000, StopReason::Either, Count::Up)
+        silvia.until_unless("brew", 35000, StopReason::Cancel, Count::Up)
     }
 }
