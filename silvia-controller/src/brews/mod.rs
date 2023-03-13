@@ -24,6 +24,7 @@ pub enum BrewContainer {
     PreInfuse,
     Straight,
     BackFlush,
+    ValveOpen,
     Repro,
 }
 
@@ -46,10 +47,10 @@ impl BrewContainer {
                 BrewContainer::BackFlush
             },
             BrewContainer::BackFlush => {
-                BrewContainer::ValveOpen,
+                BrewContainer::ValveOpen
             },
             BrewContainer::ValveOpen => {
-                BrewContainer::Repro,
+                BrewContainer::Repro
             },
             BrewContainer::Repro => {
                 BrewContainer::Richo
@@ -71,6 +72,9 @@ impl BrewContainer {
             BrewContainer::BackFlush => {
                 BackFlush::NAME
             },
+            BrewContainer::ValveOpen => {
+                ValveOpen::NAME
+            },
             BrewContainer::Repro => {
                 Repro::NAME
             }
@@ -90,6 +94,9 @@ impl BrewContainer {
             },
             BrewContainer::BackFlush => {
                 BackFlush::brew(silvia)
+            },
+            BrewContainer::ValveOpen => {
+                ValveOpen::brew(silvia)
             },
             BrewContainer::Repro => {
                 Repro::brew(silvia)
