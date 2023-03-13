@@ -12,6 +12,9 @@ pub use preinfuse::PreInfuse;
 mod backflush;
 pub use backflush::BackFlush;
 
+mod valveopen;
+pub use valveopen::ValveOpen;
+
 mod repro;
 pub use repro::Repro;
 
@@ -43,7 +46,10 @@ impl BrewContainer {
                 BrewContainer::BackFlush
             },
             BrewContainer::BackFlush => {
-                BrewContainer::Repro
+                BrewContainer::ValveOpen,
+            },
+            BrewContainer::ValveOpen => {
+                BrewContainer::Repro,
             },
             BrewContainer::Repro => {
                 BrewContainer::Richo
