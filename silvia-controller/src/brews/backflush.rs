@@ -13,16 +13,18 @@ impl Brew for BackFlush {
 
     fn brew(silvia: &mut Silvia) -> Conclusion {
         let mut extra = [b' ', b'0', b'/', b'0' + BACKFLUSH_REPEATS as u8];
-        for _ in 0..BACKFLUSH_REPEATS {
+        for i in 0..BACKFLUSH_REPEATS {
             extra[1] += 1;
             discard(silvia.write_extra(&extra));
             silvia.valve_on();
             silvia.pump_on();
             silvia.until_unless("flush", BACKFLUSH_ON_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_ON_MILLIS as u32))?;
 
-            silvia.pump_off();
-            silvia.valve_off();
-            silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_PAUSE_MILLIS as u32))?;
+            if i != BACKFLUSH_REPEATS - 1 {
+                silvia.pump_off();
+                silvia.valve_off();
+                silvia.until_unless("wait", BACKFLUSH_PAUSE_MILLIS, StopReason::Cancel, Count::DownFrom(BACKFLUSH_PAUSE_MILLIS as u32))?;
+            }
         }
         Conclusion::done()
     }
