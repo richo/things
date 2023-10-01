@@ -201,6 +201,13 @@ impl Silvia {
         res
     }
 
+    pub fn flush(&mut self) -> Conclusion {
+        let res = brews::Flush::brew(self);
+        self.pump_off();
+        self.valve_off();
+        res
+    }
+
     pub fn pump_on(&mut self) {
         self.log("pump on");
         #[cfg(not(feature = "disable-relays"))]

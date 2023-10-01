@@ -25,7 +25,7 @@ impl Brew for RichoBrew {
             td -= 200;
         }
 
-        silvia.reinit();
+        let _ = silvia.reinit();
 
         // Run the main brew
         // Infuse leaves the valve closed, but we'll double check

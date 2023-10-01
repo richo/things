@@ -65,8 +65,10 @@ fn main() -> ! {
             Some(Conclusion::Ok(time)) => {
                 silvia.last = Some(time);
                 discard(silvia.reset_display());
-                // We ran to conclusion, do nothing.
-                let _ = silvia.until_unless("standby", 1500, StopReason::None, Count::None);
+                // We ran to conclusion, ask if the user wants to flush?
+                if silvia.until_unless("flush?", 5000, StopReason::Brew, Count::None).is_err() {
+                    silvia.flush();
+                }
             }
         }
     }

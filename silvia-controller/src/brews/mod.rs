@@ -18,6 +18,9 @@ pub use valveopen::ValveOpen;
 mod repro;
 pub use repro::Repro;
 
+mod flush;
+pub use flush::Flush;
+
 #[derive(Clone, Copy)]
 pub enum BrewContainer {
     Richo,
