@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(abi_avr_interrupt)]
 
 use panic_halt as _;
 mod debounced;
@@ -68,7 +69,7 @@ macro_rules! set_indicator (
     )
 );
 
-fn mainloop(mut items: Items) {
+fn mainloop(mut items: Items) -> ! {
    use IndicatorState::*;
    let mut indicator_state = None;
 
@@ -128,17 +129,17 @@ fn blinky_test(items: &mut Items) {
         items.right_indicator.set_low();
     }
 
-    arduino_hal::delay_ms(100000);
+    arduino_hal::delay_ms(500);
 
     // flash flash flash
 
     for _ in 0..3 {
         items.left_indicator.set_high();
         items.right_indicator.set_high();
-        arduino_hal::delay_ms(150000);
+        arduino_hal::delay_ms(100);
         items.left_indicator.set_low();
         items.right_indicator.set_low();
-        arduino_hal::delay_ms(150000);
+        arduino_hal::delay_ms(100);
     }
 
     items.led.set_low();
@@ -186,8 +187,11 @@ fn main() -> ! {
         led,
     };
 
-    loop {
-        items.led.toggle();
-        arduino_hal::delay_ms(1000);
-    }
+    blinky_test(&mut items);
+    mainloop(items);
+
+    // loop {
+    //     items.led.toggle();
+    //     arduino_hal::delay_ms(1000);
+    // }
 }
