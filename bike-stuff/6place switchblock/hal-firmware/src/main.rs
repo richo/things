@@ -86,7 +86,7 @@ fn mainloop(mut items: Items) -> ! {
                    set_indicator!(Left, indicator_state, items);
                }
            };
-           // while LEFT_BUTTON::is_low() { arduino_hal::delay_ms(500); };
+           while items.left_button.poll() { arduino_hal::delay_ms(100); };
        } else if items.right_button.poll() {
            match indicator_state {
                Right => {
@@ -99,13 +99,13 @@ fn mainloop(mut items: Items) -> ! {
                    set_indicator!(Right, indicator_state, items);
                }
            };
-           // while RIGHT_BUTTON::is_low() { arduino_hal::delay_ms(); };
+           while items.right_button.poll() { arduino_hal::delay_ms(100); };
        }
 
        if items.high_button.poll() {
            items.beams.toggle();
            // wait for the button to be released
-           // while HIGH_BEAM_BUTTON::is_low() { arduino_hal::delay_ms() }
+           while items.high_button.poll() { arduino_hal::delay_ms(100) }
        }
 
        arduino_hal::delay_ms(100);
@@ -122,10 +122,10 @@ fn blinky_test(items: &mut Items) {
     // Blink blink
     for _ in 0..2 {
         items.left_indicator.set_high();
-        arduino_hal::delay_ms(200);
+        arduino_hal::delay_ms(800);
         items.left_indicator.set_low();
         items.right_indicator.set_high();
-        arduino_hal::delay_ms(200);
+        arduino_hal::delay_ms(800);
         items.right_indicator.set_low();
     }
 
@@ -136,10 +136,10 @@ fn blinky_test(items: &mut Items) {
     for _ in 0..3 {
         items.left_indicator.set_high();
         items.right_indicator.set_high();
-        arduino_hal::delay_ms(100);
+        arduino_hal::delay_ms(500);
         items.left_indicator.set_low();
         items.right_indicator.set_low();
-        arduino_hal::delay_ms(100);
+        arduino_hal::delay_ms(200);
     }
 
     items.led.set_low();
@@ -157,6 +157,16 @@ struct Items {
     left_button: debounced::DebouncedButton<Pin<Input<PullUp>, PC2>>,
 
     led: Pin<Output, PB5>,
+}
+
+trait DebouncedShim {
+    fn poll(&self) -> bool;
+}
+
+impl DebouncedShim for Pin<Input<PullUp>, PC0> {
+    fn poll(&self) -> bool {
+        self.is_low()
+    }
 }
 
 #[arduino_hal::entry]
@@ -187,11 +197,10 @@ fn main() -> ! {
         led,
     };
 
+    millis::millis_init(dp.TC0);
+    unsafe { avr_device::interrupt::enable() };
+
     blinky_test(&mut items);
     mainloop(items);
 
-    // loop {
-    //     items.led.toggle();
-    //     arduino_hal::delay_ms(1000);
-    // }
 }

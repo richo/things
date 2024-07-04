@@ -11,7 +11,7 @@ pub struct DebouncedButton<P: Poll> {
     last: u32,
 }
 
-const DEBOUNCE_THRESHOLD: u32 = 200;
+const DEBOUNCE_THRESHOLD: u32 = 500;
 
 impl<P: Poll> DebouncedButton<P> {
     pub fn new(switch: P) -> Self {
