@@ -109,7 +109,7 @@ fn main() -> ! {
                 router.update(Source::LiveThrottle)
             }
 
-            arduino_hal::delay_ms(10);
+            arduino_hal::delay_ms(50);
         }
     } else {
         loop {
