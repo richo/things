@@ -14,6 +14,7 @@ struct MuxDriver<I2C> {
     c: I2C,
 }
 
+#[derive(Clone, Copy)]
 enum Source {
     LiveThrottle,
     Launch,
@@ -33,6 +34,8 @@ impl<I2C: i2c::I2c> MuxDriver<I2C> {
 fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
+    let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
+
 
     /*
      * For examples (and inspiration), head to
@@ -45,6 +48,14 @@ fn main() -> ! {
      */
 	let sda = pins.a4.into_pull_up_input();
 	let scl = pins.a5.into_pull_up_input();
+
+	let mut _d5 = pins.d5.into_output();
+    _d5.set_low();
+	let d6 = pins.d6.into_pull_up_input();
+
+    let _ = ufmt::uwriteln!(serial, "hi");
+
+
 
     let mut i2c = arduino_hal::I2c::new(
         dp.TWI,
@@ -69,19 +80,41 @@ fn main() -> ! {
 
     let mut led = pins.d13.into_output();
 
+    let mut state = Source::LiveThrottle;
+
     if found {
         let mut channel: u8 = 0;
 
         loop {
-            // Set a channel
-            let mask = 1 << channel;
-            set_channel(&mut i2c, mask);
-            led.toggle();
-            arduino_hal::delay_ms(1000);
-            channel += 1;
-            if channel == 2 {
-                channel = 0;
+            // // Set a channel
+            // let mask = 1 << channel;
+            // set_channel(&mut i2c, mask);
+            // led.toggle();
+            // arduino_hal::delay_ms(1000);
+            // channel += 1;
+            // if channel == 2 {
+            //     channel = 0;
+            // }
+            //
+            // We will do the interrupt thing later but for now this will do
+            let launch_button = d6.is_low();
+            {
+                match (state, launch_button) {
+                    (Source::LiveThrottle, true) => {
+                        set_channel(&mut i2c, 1 << 1);
+                        state = Source::Launch;
+                    },
+                    (Source::LiveThrottle, false) => {},
+                    (Source::Launch, true) => {},
+                    (Source::Launch, false) => {
+                        set_channel(&mut i2c, 1 << 0);
+                        state = Source::LiveThrottle;
+                    },
+                    (Source::QS, _) => {},
+                }
             }
+
+            arduino_hal::delay_ms(10);
         }
     } else {
         loop {
