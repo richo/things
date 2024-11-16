@@ -9,6 +9,7 @@ use arduino_hal::i2c::{Direction as I2cDirection};
 use arduino_hal::hal::port::{Pin, PB2, PB3, PB1, PB5, PC0, PC1, PC2};
 
 const MUX_ADDR: u8 = 0x44;
+const SHIFT_CUT_DURATION: u16 = 50; // ms
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum Source {
@@ -65,6 +66,29 @@ impl<I2C: i2c::I2c> Router<I2C> {
         self.state = new;
         self.i2c.transaction(MUX_ADDR, &mut ops)
     }
+
+    /// Blocks for the whole duration of the shift cut, so that state probably doesn't actually
+    /// need to be managed by the Source enum?
+    pub fn shift(&mut self) -> Result<(), I2C::Error> {
+        let old = self.state.mask();
+        let both = [old & Source::QS.mask()];
+        let old_mask = [old];
+        let qs_mask = [Source::QS.mask()];
+
+        let mut ops = [
+            Operation::Write(&both),
+            Operation::Write(&qs_mask),
+        ];
+        self.i2c.transaction(MUX_ADDR, &mut ops)?;
+
+        arduino_hal::delay_ms(50);
+
+        let mut ops = [
+            Operation::Write(&both),
+            Operation::Write(&old_mask),
+        ];
+        self.i2c.transaction(MUX_ADDR, &mut ops)
+    }
 }
 
 #[arduino_hal::entry]
@@ -79,6 +103,7 @@ fn main() -> ! {
 	let mut _d5 = pins.d5.into_output();
     _d5.set_low();
 	let d6 = pins.d6.into_pull_up_input();
+	let d7 = pins.d7.into_pull_up_input();
 
     let _ = ufmt::uwriteln!(serial, "hi");
 
@@ -107,6 +132,11 @@ fn main() -> ! {
                 router.update(Source::Launch)
             } else {
                 router.update(Source::LiveThrottle)
+            }
+
+            let shift_button = d7.is_low();
+            if shift_button {
+                router.shift();
             }
 
             arduino_hal::delay_ms(50);
