@@ -61,7 +61,11 @@ fn main() -> ! {
 
 
 
-
+    fn set_channel<I: i2c::I2c> (i2c: &mut I, mask: u8) {
+        // Set to both, so it never sees an open circuit
+        i2c.write(0x44, &[0b00000011]);
+        i2c.write(0x44, &[mask]);
+    }
 
     let mut led = pins.d13.into_output();
 
@@ -71,11 +75,11 @@ fn main() -> ! {
         loop {
             // Set a channel
             let mask = 1 << channel;
-            i2c.write(0x44, &[mask]);
+            set_channel(&mut i2c, mask);
             led.toggle();
             arduino_hal::delay_ms(1000);
             channel += 1;
-            if channel == 8 {
+            if channel == 2 {
                 channel = 0;
             }
         }
