@@ -3,25 +3,22 @@
 
 use panic_halt as _;
 
+use core::sync::atomic::{AtomicBool, Ordering};
+
 use embedded_hal::i2c::{self, Operation};
-use arduino_hal::prelude::*;
 use arduino_hal::i2c::{Direction as I2cDirection};
-use arduino_hal::hal::port::{Pin, PB2, PB3, PB1, PB5, PC0, PC1, PC2};
 
 const MUX_ADDR: u8 = 0x44;
 const SHIFT_CUT_DURATION: u16 = 50; // ms
+
+static S_SHIFT: AtomicBool = AtomicBool::new(false);
+static S_LAUNCH: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum Source {
     LiveThrottle,
     Launch,
     QS,
-}
-
-#[derive(Clone, Copy)]
-enum Channel {
-    A,
-    B,
 }
 
 impl Source {
@@ -128,18 +125,18 @@ fn main() -> ! {
     if found {
         loop {
             let launch_button = d6.is_low();
-            if launch_button {
+            if launch_button { // S_LAUNCH.load(Ordering::Relaxed);
                 router.update(Source::Launch)
             } else {
                 router.update(Source::LiveThrottle)
             }
 
             let shift_button = d7.is_low();
-            if shift_button {
+            if shift_button { // S_SHIFT.load(Ordering::Relaxed);
                 router.shift();
             }
 
-            arduino_hal::delay_ms(50);
+            arduino_hal::delay_ms(SHIFT_CUT_DURATION);
         }
     } else {
         loop {
