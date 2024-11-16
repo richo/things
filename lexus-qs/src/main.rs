@@ -3,30 +3,67 @@
 
 use panic_halt as _;
 
-use embedded_hal::i2c;
+use embedded_hal::i2c::{self, Operation};
 use arduino_hal::prelude::*;
-use arduino_hal::i2c::{I2c, Direction};
+use arduino_hal::i2c::{Direction as I2cDirection};
 use arduino_hal::hal::port::{Pin, PB2, PB3, PB1, PB5, PC0, PC1, PC2};
 
 const MUX_ADDR: u8 = 0x44;
 
-struct MuxDriver<I2C> {
-    c: I2C,
-}
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 enum Source {
     LiveThrottle,
     Launch,
     QS,
 }
 
-impl<I2C: i2c::I2c> MuxDriver<I2C> {
-    pub fn new(c: I2C) -> Self {
-        Self { c }
+#[derive(Clone, Copy)]
+enum Channel {
+    A,
+    B,
+}
+
+impl Source {
+    const fn mask(&self) -> u8 {
+        match self {
+            Source::LiveThrottle => 0b00010001 << 0,
+            Source::Launch => 0b00010001 << 1,
+            Source::QS => 0b00010001 << 2,
+        }
+    }
+}
+
+struct Router<I2C> {
+    i2c: I2C,
+    state: Source,
+}
+
+impl<I2C: i2c::I2c> Router<I2C> {
+    pub fn new(mut i2c: I2C) -> Self {
+        i2c.write(MUX_ADDR, &[Source::LiveThrottle.mask()]);
+
+        Self {
+            i2c,
+            state: Source::LiveThrottle,
+        }
     }
 
-    pub fn set_source(&mut self, s: Source) {
+    pub fn update(&mut self, state: Source) {
+        if state != self.state {
+            self.set_source(state);
+        }
+    }
+
+    pub fn set_source(&mut self, new: Source) -> Result<(), I2C::Error> {
+        let both = [self.state.mask() & new.mask()];
+        let new_mask = [new.mask()];
+        let mut ops = [
+            Operation::Write(&both),
+            Operation::Write(&new_mask),
+        ];
+
+        self.state = new;
+        self.i2c.transaction(MUX_ADDR, &mut ops)
     }
 }
 
@@ -36,16 +73,6 @@ fn main() -> ! {
     let pins = arduino_hal::pins!(dp);
     let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
 
-
-    /*
-     * For examples (and inspiration), head to
-     *
-     *     https://github.com/Rahix/avr-hal/tree/main/examples
-     *
-     * NOTE: Not all examples were ported to all boards!  There is a good chance though, that code
-     * for a different board can be adapted for yours.  The Arduino Uno currently has the most
-     * examples available.
-     */
 	let sda = pins.a4.into_pull_up_input();
 	let scl = pins.a5.into_pull_up_input();
 
@@ -64,54 +91,22 @@ fn main() -> ! {
         50000,
         );
 
-    let mut found = false;
-    if let Ok(r) = i2c.ping_device(0x44, Direction::Write) {
-        found = r
-    }
-
-
-
-
-    fn set_channel<I: i2c::I2c> (i2c: &mut I, mask: u8) {
-        // Set to both, so it never sees an open circuit
-        i2c.write(0x44, &[0b00000011]);
-        i2c.write(0x44, &[mask]);
-    }
-
     let mut led = pins.d13.into_output();
+    let mut found = false;
+    if i2c.ping_device(MUX_ADDR, I2cDirection::Write).unwrap_or(false) {
+        led.set_high();
+        found = true;
+    }
 
-    let mut state = Source::LiveThrottle;
+    let mut router = Router::new(i2c);
 
     if found {
-        let mut channel: u8 = 0;
-
         loop {
-            // // Set a channel
-            // let mask = 1 << channel;
-            // set_channel(&mut i2c, mask);
-            // led.toggle();
-            // arduino_hal::delay_ms(1000);
-            // channel += 1;
-            // if channel == 2 {
-            //     channel = 0;
-            // }
-            //
-            // We will do the interrupt thing later but for now this will do
             let launch_button = d6.is_low();
-            {
-                match (state, launch_button) {
-                    (Source::LiveThrottle, true) => {
-                        set_channel(&mut i2c, 1 << 1);
-                        state = Source::Launch;
-                    },
-                    (Source::LiveThrottle, false) => {},
-                    (Source::Launch, true) => {},
-                    (Source::Launch, false) => {
-                        set_channel(&mut i2c, 1 << 0);
-                        state = Source::LiveThrottle;
-                    },
-                    (Source::QS, _) => {},
-                }
+            if launch_button {
+                router.update(Source::Launch)
+            } else {
+                router.update(Source::LiveThrottle)
             }
 
             arduino_hal::delay_ms(10);
