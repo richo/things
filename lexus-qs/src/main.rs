@@ -134,9 +134,9 @@ fn main() -> ! {
             let shift_button = d7.is_low();
             if shift_button { // S_SHIFT.load(Ordering::Relaxed);
                 router.shift();
+                // Shitty version of debouncing for testing
+                arduino_hal::delay_ms(1000);
             }
-
-            arduino_hal::delay_ms(SHIFT_CUT_DURATION);
         }
     } else {
         loop {
