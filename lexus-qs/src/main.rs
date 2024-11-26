@@ -1,12 +1,23 @@
 #![no_std]
 #![no_main]
+#![feature(abi_avr_interrupt)]
 
 use panic_halt as _;
+
+use arduino_hal::prelude::*;
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use embedded_hal::i2c::{self, Operation};
+use arduino_hal::hal::port::{Pin, PD6};
+use arduino_hal::hal::port::mode::{Input, Output, PullUp};
 use arduino_hal::i2c::{Direction as I2cDirection};
+use embedded_hal::digital::InputPin;
+
+use unflappable::{debouncer_uninit, Debouncer, default::ActiveLow};
+
+mod timer;
+use timer::DEBOUNCER;
 
 const MUX_ADDR: u8 = 0x44;
 const SHIFT_CUT_DURATION: u16 = 50; // ms
@@ -100,9 +111,10 @@ fn main() -> ! {
 	let mut _d5 = pins.d5.into_output();
     _d5.set_low();
 	let d6 = pins.d6.into_pull_up_input();
+    let mut debounced_qs = unsafe { DEBOUNCER.init(d6) }.unwrap() ;
 	let d7 = pins.d7.into_pull_up_input();
 
-    let _ = ufmt::uwriteln!(serial, "hi");
+    let _ = ufmt::uwriteln!(serial, "INCREMENT: {}", timer::MILLIS_INCREMENT);
 
 
 
@@ -122,20 +134,38 @@ fn main() -> ! {
 
     let mut router = Router::new(i2c);
 
+    timer::timer_init(dp.TC0);
+    // SAFETY: Interrupts enabled after this
+    unsafe { avr_device::interrupt::enable() };
+
+    let _ = ufmt::uwriteln!(serial, "millis: {}", timer::millis());
+    arduino_hal::delay_ms(126);
+    let _ = ufmt::uwriteln!(serial, "millis: {}", timer::millis());
+
+
+    let mut shift = false;
+
     if found {
         loop {
-            let launch_button = d6.is_low();
+            let launch_button = d7.is_low();
             if launch_button { // S_LAUNCH.load(Ordering::Relaxed);
                 router.update(Source::Launch)
             } else {
                 router.update(Source::LiveThrottle)
             }
 
-            let shift_button = d7.is_low();
-            if shift_button { // S_SHIFT.load(Ordering::Relaxed);
-                router.shift();
-                // Shitty version of debouncing for testing
-                arduino_hal::delay_ms(1000);
+            match shift {
+                false => {
+                    if debounced_qs.is_low().unwrap() {
+                        router.shift();
+                        shift = true;
+                    }
+                },
+                true => {
+                    if debounced_qs.is_high().unwrap() {
+                        shift = false;
+                    }
+                }
             }
         }
     } else {
