@@ -45,15 +45,18 @@ impl Source {
 struct Router<I2C> {
     i2c: I2C,
     state: Source,
+    // TODO(richo): Ditch this once we do a rev2 board
+    addr: u8,
 }
 
 impl<I2C: i2c::I2c> Router<I2C> {
-    pub fn new(mut i2c: I2C) -> Self {
-        i2c.write(MUX_ADDR, &[Source::LiveThrottle.mask()]);
+    pub fn new(mut i2c: I2C, addr: u8) -> Self {
+        i2c.write(addr, &[Source::LiveThrottle.mask()]);
 
         Self {
             i2c,
             state: Source::LiveThrottle,
+            addr,
         }
     }
 
@@ -72,7 +75,7 @@ impl<I2C: i2c::I2c> Router<I2C> {
         ];
 
         self.state = new;
-        self.i2c.transaction(MUX_ADDR, &mut ops)
+        self.i2c.transaction(self.addr, &mut ops)
     }
 
     /// Blocks for the whole duration of the shift cut, so that state probably doesn't actually
@@ -87,7 +90,7 @@ impl<I2C: i2c::I2c> Router<I2C> {
             Operation::Write(&both),
             Operation::Write(&qs_mask),
         ];
-        self.i2c.transaction(MUX_ADDR, &mut ops)?;
+        self.i2c.transaction(self.addr, &mut ops)?;
 
         arduino_hal::delay_ms(50);
 
@@ -95,7 +98,7 @@ impl<I2C: i2c::I2c> Router<I2C> {
             Operation::Write(&both),
             Operation::Write(&old_mask),
         ];
-        self.i2c.transaction(MUX_ADDR, &mut ops)
+        self.i2c.transaction(self.addr, &mut ops)
     }
 }
 
@@ -126,13 +129,27 @@ fn main() -> ! {
         );
 
     let mut led = pins.d13.into_output();
-    let mut found = false;
-    if i2c.ping_device(MUX_ADDR, I2cDirection::Write).unwrap_or(false) {
-        led.set_high();
-        found = true;
+    let mut found = None;
+    // This is a gigantic hack because some dumbass left the address pins floating.
+    // Instead of pinging just our device and calling it good, we check all four places it could
+    // be.
+
+    for i in 0x44 ..= 0x47 {
+        if i2c.ping_device(i, I2cDirection::Write).unwrap_or(false) {
+            led.set_high();
+            found = Some(i);
+            let _ = ufmt::uwriteln!(serial, "{:x}: found i2c device", i);
+        } else {
+            let _ = ufmt::uwriteln!(serial, "{:x}: no i2c device found", i);
+        }
     }
 
-    let mut router = Router::new(i2c);
+    let addr = match found {
+        None => loop { arduino_hal::delay_ms(1000); },
+        Some(a) => a,
+    };
+
+    let mut router = Router::new(i2c, addr);
 
     timer::timer_init(dp.TC0);
     // SAFETY: Interrupts enabled after this
@@ -142,35 +159,28 @@ fn main() -> ! {
     arduino_hal::delay_ms(126);
     let _ = ufmt::uwriteln!(serial, "millis: {}", timer::millis());
 
-
     let mut shift = false;
 
-    if found {
-        loop {
-            let launch_button = d7.is_low();
-            if launch_button { // S_LAUNCH.load(Ordering::Relaxed);
-                router.update(Source::Launch)
-            } else {
-                router.update(Source::LiveThrottle)
-            }
+    loop {
+        let launch_button = d7.is_low();
+        if launch_button { // S_LAUNCH.load(Ordering::Relaxed);
+            router.update(Source::Launch)
+        } else {
+            router.update(Source::LiveThrottle)
+        }
 
-            match shift {
-                false => {
-                    if debounced_qs.is_low().unwrap() {
-                        router.shift();
-                        shift = true;
-                    }
-                },
-                true => {
-                    if debounced_qs.is_high().unwrap() {
-                        shift = false;
-                    }
+        match shift {
+            false => {
+                if debounced_qs.is_low().unwrap() {
+                    router.shift();
+                    shift = true;
+                }
+            },
+            true => {
+                if debounced_qs.is_high().unwrap() {
+                    shift = false;
                 }
             }
-        }
-    } else {
-        loop {
-            arduino_hal::delay_ms(1000);
         }
     }
 }
